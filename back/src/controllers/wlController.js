@@ -8,8 +8,6 @@
 
 const wlDao = require('../dao/wl_dao');
 
-const wlDao = require('../dao/wl_dao');
-
 function normalizeDateOnly(v) {
   if (!v) return null;
 
