@@ -8,6 +8,24 @@
 
 const wlDao = require('../dao/wl_dao');
 
+const wlDao = require('../dao/wl_dao');
+
+function normalizeDateOnly(v) {
+  if (!v) return null;
+
+  const s = String(v).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return s;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    return s.slice(0, 10);
+  }
+
+  return s.slice(0, 10);
+}
+
 // ─── 결재자 매핑 ────────────────────────────────────────────────────────────
 const APPROVER_MAP = {
   'PEE1:PT': ['조지훈', '전대영', '손석현'],
@@ -79,6 +97,9 @@ exports.submit = async (req, res) => {
 
     const required = ['task_name', 'task_date', 'equipment_type', 'equipment_name',
                       'work_type', 'site', 'group'];
+
+    body.task_date = normalizeDateOnly(body.task_date);
+    
     for (const f of required) {
       if (!body[f] || body[f] === 'SELECT') {
         return res.status(400).json({ error: `${f} is required` });
@@ -92,7 +113,7 @@ exports.submit = async (req, res) => {
 
     const payload = {
       task_name:        body.task_name,
-      task_date:        body.task_date,
+      task_date:        normalizeDateOnly(body.task_date),
       country:          body.country || 'KR',
       group:            body.group,
       site:             body.site,
