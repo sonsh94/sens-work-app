@@ -9,6 +9,13 @@ const pool = mysql.createPool({
   port: secret.port,
   password: secret.password,
   database: secret.database,
+
+  // DATE 컬럼을 JS Date 객체로 바꾸지 않고 문자열 그대로 받기
+  // 예: 2026-06-17 그대로 유지
+  dateStrings: true,
+
+  // 서버/DB 시간대 차이 보정
+  timezone: '+09:00',
 });
 
 async function checkDatabase() {
