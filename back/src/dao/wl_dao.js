@@ -148,7 +148,7 @@ exports.findReworkCandidates = async ({ task_name, task_cause, task_date, days =
         e.id,
         e.work_code,
         e.task_name,
-        e.task_date,
+        DATE_FORMAT(e.task_date, '%Y-%m-%d') AS task_date,
         e.site,
         e.\`line\`,
         e.equipment_type,
@@ -354,6 +354,7 @@ exports.listPendingEvents = async (group, site, mineNickname) => {
 
     const sql = `
       SELECT e.*,
+        DATE_FORMAT(e.task_date, '%Y-%m-%d') AS task_date,
         GROUP_CONCAT(ww.engineer_name ORDER BY ww.id SEPARATOR ', ') AS workers
       FROM wl_event e
       LEFT JOIN wl_worker ww ON ww.event_id = e.id
@@ -375,7 +376,11 @@ exports.getEventById = async (id) => {
   const conn = await pool.getConnection(async c => c);
   try {
     const [[event]] = await conn.query(
-      `SELECT * FROM wl_event WHERE id = ?`, [id]
+      `SELECT *,
+              DATE_FORMAT(task_date, '%Y-%m-%d') AS task_date
+       FROM wl_event
+       WHERE id = ?`,
+      [id]
     );
     if (!event) return null;
 
@@ -626,7 +631,12 @@ exports.approveEvent = async (id, actorId, actorName, comment, patch) => {
       if (sets.length) { vals.push(id); await conn.query(`UPDATE wl_event SET ${sets.join(', ')} WHERE id = ?`, vals); }
     }
 
-    const [[snapshot]] = await conn.query(`SELECT * FROM wl_event WHERE id = ?`, [id]);
+    const [[snapshot]] = await conn.query(
+      `SELECT *, DATE_FORMAT(task_date, '%Y-%m-%d') AS task_date
+       FROM wl_event
+       WHERE id = ?`,
+      [id]
+    );
 
     await conn.query(
       `UPDATE wl_event SET approval_status = 'APPROVED' WHERE id = ?`, [id]
@@ -658,6 +668,7 @@ exports.listMyRejected = async (userIdx) => {
   try {
     const [rows] = await conn.query(
       `SELECT e.*,
+         DATE_FORMAT(e.task_date, '%Y-%m-%d') AS task_date,
          GROUP_CONCAT(ww.engineer_name ORDER BY ww.id SEPARATOR ', ') AS workers,
          (SELECT comment FROM wl_approval
           WHERE event_id = e.id AND action = 'REJECT'
@@ -717,6 +728,7 @@ exports.listEvents = async (filters = {}) => {
 
     const sql = `
       SELECT e.*,
+        DATE_FORMAT(e.task_date, '%Y-%m-%d') AS task_date,
         GROUP_CONCAT(DISTINCT ww.engineer_name ORDER BY ww.id SEPARATOR ', ') AS workers_str
       FROM wl_event e
       LEFT JOIN wl_worker ww ON ww.event_id = e.id
@@ -855,7 +867,7 @@ exports.listEventsForExcel = async (filters = {}) => {
       SELECT
         e.work_code,
         e.task_name,
-        e.task_date,
+        DATE_FORMAT(e.task_date, '%Y-%m-%d') AS task_date,
         e.country,
         e.\`group\`,
         e.site,
