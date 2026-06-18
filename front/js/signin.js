@@ -1,4 +1,17 @@
 const API_BASE_URL = "http://13.125.122.202:3001";
+
+function parseJwt(token) {
+  const base64Url = token.split(".")[1];
+  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, "=");
+
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+  const json = new TextDecoder("utf-8").decode(bytes);
+
+  return JSON.parse(json);
+}
+
 const btnSignIn = document.querySelector("#signin");
 
 btnSignIn.addEventListener("click", signIn);
@@ -38,7 +51,7 @@ async function signIn(event) {
 
     localStorage.setItem("x-access-token", jwt);
 
-    const decodedToken = JSON.parse(atob(jwt.split(".")[1]));
+    const decodedToken = parseJwt(jwt);
     localStorage.setItem("user-role", decodedToken.role);
     localStorage.setItem("user-nickname", decodedToken.nickname);
 
