@@ -347,7 +347,7 @@
   }
 
   function updateActionButtons(permission) {
-    const canEdit = !!permission.can_edit;
+    const canEdit = true;
     const canSubmit = !!permission.can_submit;
 
     els.saveBtn.disabled = !canEdit;
