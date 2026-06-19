@@ -724,11 +724,14 @@
     const ok = window.confirm(`현재 필터 기준으로 capability_score 를 업데이트할까요?\n설비군: ${els.equipmentGroup.value}\n기간: ${els.dateFrom.value} ~ ${els.dateTo.value}`);
     if (!ok) return;
     try {
-      const data = await api('/api/pci/admin/capability-score/sync', {
+     const data = await api('/api/pci/admin/capability-score/sync', {
   method: 'POST',
   body: {
     ...collectFilters(),
+
+    // 전체 설비군 동기화용
     equipment_group: '',
+    equipmentGroupCode: '',
   },
 });
       els.adminResult.textContent = `capability_score 업데이트 완료 · 대상 ${data.affected_rows || 0}명 · eq_id ${data.eq_id || '-'} (${data.eq_code || '-'})`;
