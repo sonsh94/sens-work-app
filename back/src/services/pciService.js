@@ -1,4 +1,3 @@
-```js
 'use strict';
 
 const pciDao = require('../dao/pciDao');
@@ -16,6 +15,16 @@ function normalizeDate(value, fallback) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return fallback;
 
   return v;
+}
+
+function getLocalToday() {
+  const now = new Date();
+
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
 }
 
 function normalizeSourceWorkType(domain, value) {
@@ -134,7 +143,7 @@ async function getMatrix(params) {
 
   const dateTo = normalizeDate(
     params.dateTo || params.date_to,
-    new Date().toISOString().slice(0, 10)
+    getLocalToday()
   );
 
   const sourceWorkType = normalizeSourceWorkType(
@@ -186,7 +195,7 @@ async function getCellDetail(params) {
 
   const dateTo = normalizeDate(
     params.dateTo || params.date_to,
-    new Date().toISOString().slice(0, 10)
+    getLocalToday()
   );
 
   const engineerId = Number(
@@ -294,7 +303,7 @@ async function getEngineerDetail(params) {
 
   const dateTo = normalizeDate(
     params.dateTo || params.date_to,
-    new Date().toISOString().slice(0, 10)
+    getLocalToday()
   );
 
   const engineerId = Number(
@@ -406,7 +415,7 @@ async function rebuildRange({ userIdx, body }) {
 
   const dateTo = normalizeDate(
     body.date_to || body.dateTo,
-    new Date().toISOString().slice(0, 10)
+    getLocalToday()
   );
 
   return await pciDao.rebuildRange({
@@ -515,6 +524,28 @@ function normalizeEquipmentKey(value) {
     .replace(/[^A-Z0-9]/g, '');
 }
 
+function getEquipmentKeys(...values) {
+  const keys = new Set();
+
+  for (const value of values) {
+    const key = normalizeEquipmentKey(value);
+
+    if (key) keys.add(key);
+  }
+
+  return keys;
+}
+
+function hasMatchingEquipmentKey(allowedKeys, targetKeys) {
+  if (!allowedKeys || !targetKeys) return false;
+
+  for (const key of targetKeys) {
+    if (allowedKeys.has(key)) return true;
+  }
+
+  return false;
+}
+
 /**
  * capability_score에 등록된 사원별 설비 목록을 가져온다.
  *
@@ -602,7 +633,7 @@ async function syncCapabilityScore({
 
   const dateTo = normalizeDate(
     body.date_to || body.dateTo,
-    new Date().toISOString().slice(0, 10)
+    getLocalToday()
   );
 
   const common = {
@@ -789,14 +820,15 @@ async function syncMonthlyCapability({
     const allowed =
       allowedEquipmentMap.get(engineerId);
 
-    const codeKey =
-      normalizeEquipmentKey(row.eq_code);
+    const equipmentKeys = getEquipmentKeys(
+      row.eq_id,
+      row.eq_code,
+      row.eq_name
+    );
 
-    const nameKey =
-      normalizeEquipmentKey(row.eq_name);
-
-    if (codeKey) allowed.add(codeKey);
-    if (nameKey) allowed.add(nameKey);
+    for (const key of equipmentKeys) {
+      allowed.add(key);
+    }
   }
 
   const bucket = new Map();
@@ -874,8 +906,19 @@ async function syncMonthlyCapability({
 
     if (!equipmentGroupCode) continue;
 
-    const equipmentGroupKey =
-      normalizeEquipmentKey(
+    /*
+     * 화면/PCI/eq_master에서 설비명이 서로
+     * SUPRA_N, SUPRA N, SUPRAN처럼 달라도
+     * 같은 설비로 인식하도록 가능한 키를 모두 만든다.
+     */
+    const equipmentGroupKeys =
+      getEquipmentKeys(
+        groupRow.id,
+        groupRow.eq_id,
+        groupRow.code,
+        groupRow.equipment_group_code,
+        groupRow.eq_code,
+        groupRow.eq_name,
         equipmentGroupCode
       );
 
@@ -925,9 +968,9 @@ async function syncMonthlyCapability({
        * 설비군이면 계산에서 제외
        */
       if (
-        !allowedEquipment ||
-        !allowedEquipment.has(
-          equipmentGroupKey
+        !hasMatchingEquipmentKey(
+          allowedEquipment,
+          equipmentGroupKeys
         )
       ) {
         continue;
@@ -1038,6 +1081,3 @@ module.exports = {
   syncCapabilityScore,
   syncMonthlyCapability,
 };
-```
-
-
