@@ -725,9 +725,12 @@
     if (!ok) return;
     try {
       const data = await api('/api/pci/admin/capability-score/sync', {
-        method: 'POST',
-        body: collectFilters(),
-      });
+  method: 'POST',
+  body: {
+    ...collectFilters(),
+    equipment_group: '',
+  },
+});
       els.adminResult.textContent = `capability_score 업데이트 완료 · 대상 ${data.affected_rows || 0}명 · eq_id ${data.eq_id || '-'} (${data.eq_code || '-'})`;
       showToast('capability_score 업데이트 완료');
     } catch (error) {
