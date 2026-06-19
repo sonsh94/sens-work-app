@@ -70,7 +70,9 @@ function shapeMatrixResult(raw) {
 
     cellMap.set(`${row.pci_item_id}:${row.engineer_id}`, cell);
 
-    if (!engineerScoreBuckets.has(row.engineer_id)) engineerScoreBuckets.set(row.engineer_id, []);
+    if (!engineerScoreBuckets.has(row.engineer_id)) {
+      engineerScoreBuckets.set(row.engineer_id, []);
+    }
     engineerScoreBuckets.get(row.engineer_id).push(cell.pci_score);
   }
 
@@ -339,9 +341,7 @@ function normalizeMonth(value) {
 function getMonthRange(ym) {
   const [y, m] = ym.split('-').map(Number);
   const end = new Date(Date.UTC(y, m, 0));
-
-  const fmt = (d) =>
-    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  const fmt = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
   return {
     dateFrom: '2024-01-01',
@@ -350,10 +350,19 @@ function getMonthRange(ym) {
 }
 
 async function syncCapabilityScore({ userIdx, body }) {
+  const equipmentGroupCode = String(body.equipment_group || body.equipmentGroupCode || '').trim();
+
+  if (!equipmentGroupCode) {
+    const err = new Error('equipment_group 값이 필요합니다.');
+    err.statusCode = 400;
+    throw err;
+  }
+
   const dateFrom = normalizeDate(body.date_from || body.dateFrom, '2025-01-01');
   const dateTo = normalizeDate(body.date_to || body.dateTo, new Date().toISOString().slice(0, 10));
 
   const common = {
+    equipment_group: equipmentGroupCode,
     group: body.group || '',
     site: body.site || '',
     keyword: body.keyword || '',
@@ -361,126 +370,79 @@ async function syncCapabilityScore({ userIdx, body }) {
     date_to: dateTo,
   };
 
-  const requestedEquipmentGroup = String(
-    body.equipment_group || body.equipmentGroupCode || ''
-  ).trim();
+  const [setup, maint] = await Promise.all([
+    getMatrix({
+      ...common,
+      domain: 'SETUP',
+      source_work_type: body.source_work_type || body.sourceWorkType || 'MERGED',
+    }),
+    getMatrix({
+      ...common,
+      domain: 'MAINT',
+      source_work_type: 'MAINT',
+    }),
+  ]);
 
-  let groups = [];
+  const map = new Map();
 
-  if (requestedEquipmentGroup) {
-    groups = [{ code: requestedEquipmentGroup }];
-  } else {
-    groups = await pciDao.getActiveEquipmentGroups();
+  for (const row of setup.engineers || []) {
+    if (!map.has(row.engineer_id)) {
+      map.set(row.engineer_id, {
+        engineer_id: row.engineer_id,
+        engineer_name: row.engineer_name,
+        setup_score: 0,
+        maint_score: 0,
+      });
+    }
   }
 
-  let totalAffected = 0;
-  const results = [];
-
-  for (const groupRow of groups) {
-    const equipmentGroupCode = groupRow.code || groupRow.equipment_group_code || groupRow.eq_code || groupRow.eq_name;
-
-    if (!equipmentGroupCode) continue;
-
-    const setupSourceWorkType = body.source_work_type || body.sourceWorkType || 'SETUP';
-
-const [setup, maint] = await Promise.all([
-  getMatrix({
-    ...common,
-    equipment_group: equipmentGroupCode,
-    domain: 'SETUP',
-    source_work_type: setupSourceWorkType,
-  }),
-  getMatrix({
-    ...common,
-    equipment_group: equipmentGroupCode,
-    domain: 'MAINT',
-    source_work_type: 'MAINT',
-  }),
-]);
-
-    const map = new Map();
-
-    for (const row of setup.engineers || []) {
-      if (!map.has(row.engineer_id)) {
-        map.set(row.engineer_id, {
-          engineer_id: row.engineer_id,
-          engineer_name: row.engineer_name || '',
-          setup_score: 0,
-          maint_score: 0,
-        });
-      }
+  for (const row of maint.engineers || []) {
+    if (!map.has(row.engineer_id)) {
+      map.set(row.engineer_id, {
+        engineer_id: row.engineer_id,
+        engineer_name: row.engineer_name,
+        setup_score: 0,
+        maint_score: 0,
+      });
     }
-
-    for (const row of maint.engineers || []) {
-      if (!map.has(row.engineer_id)) {
-        map.set(row.engineer_id, {
-          engineer_id: row.engineer_id,
-          engineer_name: row.engineer_name || '',
-          setup_score: 0,
-          maint_score: 0,
-        });
-      }
-    }
-
-    for (const row of setup.engineer_averages || []) {
-      if (!map.has(row.engineer_id)) {
-        map.set(row.engineer_id, {
-          engineer_id: row.engineer_id,
-          engineer_name: row.engineer_name || '',
-          setup_score: 0,
-          maint_score: 0,
-        });
-      }
-
-      map.get(row.engineer_id).setup_score = Number(
-        (Number(row.avg_pci || 0) / 100).toFixed(6)
-      );
-    }
-
-    for (const row of maint.engineer_averages || []) {
-      if (!map.has(row.engineer_id)) {
-        map.set(row.engineer_id, {
-          engineer_id: row.engineer_id,
-          engineer_name: row.engineer_name || '',
-          setup_score: 0,
-          maint_score: 0,
-        });
-      }
-
-      map.get(row.engineer_id).maint_score = Number(
-        (Number(row.avg_pci || 0) / 100).toFixed(6)
-      );
-    }
-
-    const rows = [...map.values()];
-
-    const result = await pciDao.upsertCapabilityScores({
-      userIdx,
-      equipmentGroupCode,
-      rows,
-    });
-
-    totalAffected += Number(result.affected_rows || 0);
-
-    results.push({
-      equipment_group: equipmentGroupCode,
-      eq_id: result.eq_id,
-      eq_code: result.eq_code,
-      eq_name: result.eq_name,
-      affected_rows: result.affected_rows || 0,
-      rows,
-    });
   }
+
+  for (const row of setup.engineer_averages || []) {
+    if (!map.has(row.engineer_id)) {
+      map.set(row.engineer_id, {
+        engineer_id: row.engineer_id,
+        engineer_name: '',
+        setup_score: 0,
+        maint_score: 0,
+      });
+    }
+
+    map.get(row.engineer_id).setup_score = Number((Number(row.avg_pci || 0) / 100).toFixed(6));
+  }
+
+  for (const row of maint.engineer_averages || []) {
+    if (!map.has(row.engineer_id)) {
+      map.set(row.engineer_id, {
+        engineer_id: row.engineer_id,
+        engineer_name: '',
+        setup_score: 0,
+        maint_score: 0,
+      });
+    }
+
+    map.get(row.engineer_id).maint_score = Number((Number(row.avg_pci || 0) / 100).toFixed(6));
+  }
+
+  const rows = [...map.values()];
+  const result = await pciDao.upsertCapabilityScores({ userIdx, equipmentGroupCode, rows });
 
   return {
-    ok: true,
-    affected_rows: totalAffected,
+    ...result,
     filters: {
       ...common,
-      equipment_group: requestedEquipmentGroup || 'ALL',
-      source_work_type: setupSourceWorkType,
+      source_work_type: body.source_work_type || body.sourceWorkType || 'MERGED',
     },
-    results,
+    rows,
   };
 }
 
@@ -496,6 +458,10 @@ async function syncMonthlyCapability({ userIdx, body }) {
     date_to: dateTo,
   };
 
+  const setupSourceWorkType = String(body.source_work_type || body.sourceWorkType || 'MERGED')
+    .trim()
+    .toUpperCase();
+
   const groups = await pciDao.getActiveEquipmentGroups();
   const bucket = new Map();
 
@@ -508,14 +474,34 @@ async function syncMonthlyCapability({ userIdx, body }) {
         total: [],
       });
     }
+
     return bucket.get(engineerId);
   }
 
-  function pushScore(list, value) {
-    const n = Number(value || 0);
-    if (Number.isFinite(n) && n > 0) {
-      list.push(n);
+  function averagePositiveScoresByEngineer(cells) {
+    const scoreMap = new Map();
+
+    for (const cell of cells || []) {
+      const engineerId = Number(cell.engineer_id);
+      const score = Number(cell.pci_score || 0);
+
+      if (!engineerId || !Number.isFinite(score) || score <= 0) continue;
+
+      if (!scoreMap.has(engineerId)) {
+        scoreMap.set(engineerId, []);
+      }
+
+      scoreMap.get(engineerId).push(score / 100);
     }
+
+    const result = new Map();
+
+    for (const [engineerId, scores] of scoreMap.entries()) {
+      if (!scores.length) continue;
+      result.set(engineerId, average(scores));
+    }
+
+    return result;
   }
 
   for (const groupRow of groups) {
@@ -532,7 +518,7 @@ async function syncMonthlyCapability({ userIdx, body }) {
         ...common,
         equipment_group: equipmentGroupCode,
         domain: 'SETUP',
-        source_work_type: body.source_work_type || body.sourceWorkType || 'MERGED',
+        source_work_type: setupSourceWorkType || 'MERGED',
       }),
       getMatrix({
         ...common,
@@ -542,37 +528,22 @@ async function syncMonthlyCapability({ userIdx, body }) {
       }),
     ]);
 
-    const setupMap = new Map();
-    const maintMap = new Map();
-
-    for (const row of setup.engineer_averages || []) {
-      const engineerId = Number(row.engineer_id);
-      const score = Number(row.avg_pci || 0) / 100;
-
-      if (!engineerId || !Number.isFinite(score) || score <= 0) continue;
-
-      setupMap.set(engineerId, score);
-      pushScore(ensureBucket(engineerId).setup, score);
-    }
-
-    for (const row of maint.engineer_averages || []) {
-      const engineerId = Number(row.engineer_id);
-      const score = Number(row.avg_pci || 0) / 100;
-
-      if (!engineerId || !Number.isFinite(score) || score <= 0) continue;
-
-      maintMap.set(engineerId, score);
-      pushScore(ensureBucket(engineerId).maint, score);
-    }
-
-    const engineerIds = new Set([
-      ...setupMap.keys(),
-      ...maintMap.keys(),
-    ]);
+    const setupMap = averagePositiveScoresByEngineer(setup.cells || []);
+    const maintMap = averagePositiveScoresByEngineer(maint.cells || []);
+    const engineerIds = new Set([...setupMap.keys(), ...maintMap.keys()]);
 
     for (const engineerId of engineerIds) {
+      const row = ensureBucket(engineerId);
       const setupScore = setupMap.get(engineerId);
       const maintScore = maintMap.get(engineerId);
+
+      if (setupScore != null && Number.isFinite(setupScore) && setupScore > 0) {
+        row.setup.push(setupScore);
+      }
+
+      if (maintScore != null && Number.isFinite(maintScore) && maintScore > 0) {
+        row.maint.push(maintScore);
+      }
 
       let totalScore = null;
 
@@ -583,7 +554,7 @@ async function syncMonthlyCapability({ userIdx, body }) {
       }
 
       if (totalScore != null && Number.isFinite(totalScore) && totalScore > 0) {
-        pushScore(ensureBucket(engineerId).total, totalScore);
+        row.total.push(totalScore);
       }
     }
   }
@@ -602,11 +573,14 @@ async function syncMonthlyCapability({ userIdx, body }) {
     ym,
     date_from: dateFrom,
     date_to: dateTo,
+    source_work_type: setupSourceWorkType || 'MERGED',
     rows,
   };
 }
+
 async function deleteManualCredit({ userIdx, manualCreditId }) {
   const id = Number(manualCreditId);
+
   if (!id) {
     const err = new Error('manual credit id 가 필요합니다.');
     err.statusCode = 400;
