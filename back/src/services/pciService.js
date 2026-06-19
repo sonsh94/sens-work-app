@@ -344,7 +344,6 @@ function getMonthRange(ym) {
     `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
   return {
-    // 월별 CAPA 그래프는 월별 작업량이 아니라 누적 CAPA 추이를 보여줘야 함
     dateFrom: '2024-01-01',
     dateTo: fmt(end),
   };
@@ -497,15 +496,10 @@ async function syncMonthlyCapability({ userIdx, body }) {
     date_to: dateTo,
   };
 
-  const setupSourceWorkType = String(
-    body.source_work_type || body.sourceWorkType || 'MERGED'
-  ).trim().toUpperCase();
-
   const groups = await pciDao.getActiveEquipmentGroups();
-
   const bucket = new Map();
 
-  function ensureEngineer(engineerId) {
+  function ensureBucket(engineerId) {
     if (!bucket.has(engineerId)) {
       bucket.set(engineerId, {
         engineer_id: engineerId,
@@ -517,9 +511,11 @@ async function syncMonthlyCapability({ userIdx, body }) {
     return bucket.get(engineerId);
   }
 
-  function pushPositive(arr, value) {
+  function pushScore(list, value) {
     const n = Number(value || 0);
-    if (Number.isFinite(n) && n > 0) arr.push(n);
+    if (Number.isFinite(n) && n > 0) {
+      list.push(n);
+    }
   }
 
   for (const groupRow of groups) {
@@ -536,7 +532,7 @@ async function syncMonthlyCapability({ userIdx, body }) {
         ...common,
         equipment_group: equipmentGroupCode,
         domain: 'SETUP',
-        source_work_type: setupSourceWorkType,
+        source_work_type: body.source_work_type || body.sourceWorkType || 'MERGED',
       }),
       getMatrix({
         ...common,
@@ -549,9 +545,6 @@ async function syncMonthlyCapability({ userIdx, body }) {
     const setupMap = new Map();
     const maintMap = new Map();
 
-    // 중요: cells 평균 금지
-    // cells는 항목별 0점이 많이 포함돼서 0.06 같은 낮은 값이 들어감
-    // monthly_capability는 engineer_averages 기준으로 저장해야 함
     for (const row of setup.engineer_averages || []) {
       const engineerId = Number(row.engineer_id);
       const score = Number(row.avg_pci || 0) / 100;
@@ -559,7 +552,7 @@ async function syncMonthlyCapability({ userIdx, body }) {
       if (!engineerId || !Number.isFinite(score) || score <= 0) continue;
 
       setupMap.set(engineerId, score);
-      pushPositive(ensureEngineer(engineerId).setup, score);
+      pushScore(ensureBucket(engineerId).setup, score);
     }
 
     for (const row of maint.engineer_averages || []) {
@@ -569,7 +562,7 @@ async function syncMonthlyCapability({ userIdx, body }) {
       if (!engineerId || !Number.isFinite(score) || score <= 0) continue;
 
       maintMap.set(engineerId, score);
-      pushPositive(ensureEngineer(engineerId).maint, score);
+      pushScore(ensureBucket(engineerId).maint, score);
     }
 
     const engineerIds = new Set([
@@ -578,19 +571,19 @@ async function syncMonthlyCapability({ userIdx, body }) {
     ]);
 
     for (const engineerId of engineerIds) {
-      const s = setupMap.get(engineerId);
-      const m = maintMap.get(engineerId);
+      const setupScore = setupMap.get(engineerId);
+      const maintScore = maintMap.get(engineerId);
 
-      let total = null;
+      let totalScore = null;
 
-      if (s != null && m != null) {
-        total = (s + m) / 2;
+      if (setupScore != null && maintScore != null) {
+        totalScore = (setupScore + maintScore) / 2;
       } else {
-        total = s ?? m ?? null;
+        totalScore = setupScore ?? maintScore ?? null;
       }
 
-      if (total != null && Number.isFinite(total) && total > 0) {
-        pushPositive(ensureEngineer(engineerId).total, total);
+      if (totalScore != null && Number.isFinite(totalScore) && totalScore > 0) {
+        pushScore(ensureBucket(engineerId).total, totalScore);
       }
     }
   }
@@ -609,7 +602,6 @@ async function syncMonthlyCapability({ userIdx, body }) {
     ym,
     date_from: dateFrom,
     date_to: dateTo,
-    source_work_type: setupSourceWorkType,
     rows,
   };
 }
