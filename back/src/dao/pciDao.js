@@ -1018,4 +1018,25 @@ module.exports = {
   upsertCapabilityScores,
   upsertMonthlyCapability,
   getActiveEquipmentGroups,
+
+  async function getCapabilityEquipmentRows() {
+  const conn = await pool.getConnection();
+
+  try {
+    const [rows] = await conn.query(`
+      SELECT
+        cs.engineer_id,
+        cs.eq_id,
+        em.eq_code,
+        em.eq_name
+      FROM capability_score cs
+      JOIN eq_master em
+        ON em.id = cs.eq_id
+    `);
+
+    return rows || [];
+  } finally {
+    conn.release();
+  }
+}
 };
