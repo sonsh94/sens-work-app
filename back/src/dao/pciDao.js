@@ -1018,6 +1018,7 @@ module.exports = {
   upsertCapabilityScores,
   upsertMonthlyCapability,
   getActiveEquipmentGroups,
+  getCapabilityEquipmentRows,
 
   async function getCapabilityEquipmentRows() {
   const conn = await pool.getConnection();
