@@ -376,20 +376,22 @@ async function syncCapabilityScore({ userIdx, body }) {
 
     if (!equipmentGroupCode) continue;
 
-    const [setup, maint] = await Promise.all([
-      getMatrix({
-        ...common,
-        equipment_group: equipmentGroupCode,
-        domain: 'SETUP',
-        source_work_type: 'MERGED',
-      }),
-      getMatrix({
-        ...common,
-        equipment_group: equipmentGroupCode,
-        domain: 'MAINT',
-        source_work_type: 'MAINT',
-      }),
-    ]);
+    const setupSourceWorkType = body.source_work_type || body.sourceWorkType || 'SETUP';
+
+const [setup, maint] = await Promise.all([
+  getMatrix({
+    ...common,
+    equipment_group: equipmentGroupCode,
+    domain: 'SETUP',
+    source_work_type: setupSourceWorkType,
+  }),
+  getMatrix({
+    ...common,
+    equipment_group: equipmentGroupCode,
+    domain: 'MAINT',
+    source_work_type: 'MAINT',
+  }),
+]);
 
     const map = new Map();
 
@@ -471,7 +473,7 @@ async function syncCapabilityScore({ userIdx, body }) {
     filters: {
       ...common,
       equipment_group: requestedEquipmentGroup || 'ALL',
-      source_work_type: 'MERGED',
+      source_work_type: setupSourceWorkType,
     },
     results,
   };
