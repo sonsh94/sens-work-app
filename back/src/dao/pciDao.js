@@ -957,44 +957,91 @@ async function getCapabilityEquipmentRows() {
         ON em.id = cs.eq_id
     `);
 
-async function upsertMonthlyCapability({ userIdx, ym, rows }) {
+    return rows || [];
+  } finally {
+    conn.release();
+  }
+}
+
+async function upsertMonthlyCapability({
+  userIdx,
+  ym,
+  rows,
+}) {
   const conn = await pool.getConnection();
+
   try {
     await conn.beginTransaction();
     await ensureAdmin(conn, userIdx);
 
+    /*
+     * 해당 월을 다시 계산할 때,
+     * 이전 계산에는 있었지만 이번 계산에서 제외된 사원이
+     * DB에 계속 남아 있는 문제를 방지한다.
+     */
+    await conn.query(
+      `DELETE FROM monthly_capability
+        WHERE ym = ?`,
+      [ym]
+    );
+
     let affected = 0;
-    for (const row of rows) {
-      const engineerId = Number(row.engineer_id);
-      const totalScore = Number(row.total_score || 0);
-      const setupScore = Number(row.setup_score || 0);
-      const maintScore = Number(row.maint_score || 0);
-      const [[exists]] = await conn.query(
-        `SELECT id FROM monthly_capability WHERE engineer_id = ? AND ym = ? LIMIT 1`,
-        [engineerId, ym]
+
+    for (const row of rows || []) {
+      const engineerId = Number(
+        row.engineer_id
       );
 
-      if (exists) {
-        await conn.query(
-          `UPDATE monthly_capability
-              SET total_score = ?,
-                  setup_score = ?,
-                  maint_score = ?
-            WHERE id = ?`,
-          [totalScore, setupScore, maintScore, exists.id]
-        );
-      } else {
-        await conn.query(
-          `INSERT INTO monthly_capability (engineer_id, ym, total_score, setup_score, maint_score)
-           VALUES (?, ?, ?, ?, ?)`,
-          [engineerId, ym, totalScore, setupScore, maintScore]
-        );
+      const totalScore = Number(
+        row.total_score || 0
+      );
+
+      const setupScore = Number(
+        row.setup_score || 0
+      );
+
+      const maintScore = Number(
+        row.maint_score || 0
+      );
+
+      if (
+        !Number.isFinite(engineerId) ||
+        engineerId <= 0
+      ) {
+        continue;
       }
+
+      await conn.query(
+        `
+        INSERT INTO monthly_capability (
+          engineer_id,
+          ym,
+          total_score,
+          setup_score,
+          maint_score,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `,
+        [
+          engineerId,
+          ym,
+          totalScore,
+          setupScore,
+          maintScore,
+        ]
+      );
+
       affected += 1;
     }
 
     await conn.commit();
-    return { ok: true, ym, affected_rows: affected };
+
+    return {
+      ok: true,
+      ym,
+      affected_rows: affected,
+    };
   } catch (err) {
     await conn.rollback();
     throw err;
@@ -1005,14 +1052,21 @@ async function upsertMonthlyCapability({ userIdx, ym, rows }) {
 
 async function getActiveEquipmentGroups() {
   const conn = await pool.getConnection();
+
   try {
     const [rows] = await conn.query(
-      `SELECT code, display_name, sort_order
-         FROM checklist_equipment_group
-        WHERE is_active = 1
-        ORDER BY sort_order, code`
+      `
+      SELECT
+        code,
+        display_name,
+        sort_order
+      FROM checklist_equipment_group
+      WHERE is_active = 1
+      ORDER BY sort_order, code
+      `
     );
-    return rows;
+
+    return rows || [];
   } finally {
     conn.release();
   }
@@ -1034,11 +1088,4 @@ module.exports = {
   getCapabilityEquipmentRows,
   upsertMonthlyCapability,
   getActiveEquipmentGroups,
-
-
-    return rows || [];
-  } finally {
-    conn.release();
-  }
-}
 };
