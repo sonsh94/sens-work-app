@@ -338,10 +338,17 @@ function normalizeMonth(value) {
 
 function getMonthRange(ym) {
   const [y, m] = ym.split('-').map(Number);
-  const start = new Date(Date.UTC(y, m - 1, 1));
   const end = new Date(Date.UTC(y, m, 0));
-  const fmt = (d) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-  return { dateFrom: fmt(start), dateTo: fmt(end) };
+
+  const fmt = (d) =>
+    `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+
+  return {
+    // 월별 CAPA는 해당 월만의 작업량이 아니라
+    // 기준 시작일부터 해당 월 말일까지 누적 CAPA로 계산한다.
+    dateFrom: '2025-01-01',
+    dateTo: fmt(end),
+  };
 }
 
 async function syncCapabilityScore({ userIdx, body }) {
