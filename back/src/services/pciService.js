@@ -344,9 +344,7 @@ function getMonthRange(ym) {
     `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
   return {
-    // 월별 CAPA는 해당 월만의 작업량이 아니라
-    // 기준 시작일부터 해당 월 말일까지 누적 CAPA로 계산한다.
-    dateFrom: '2025-01-01',
+    dateFrom: '2024-01-01',
     dateTo: fmt(end),
   };
 }
