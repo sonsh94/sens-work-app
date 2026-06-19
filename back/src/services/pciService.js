@@ -300,6 +300,7 @@ async function saveManualCredit({ userIdx, manualCreditId, body }) {
     err.statusCode = 400;
     throw err;
   }
+
   if (![mainCountAdd, supportCountAdd, convertedCountAdd].some((v) => Number.isFinite(v) && v !== 0)) {
     const err = new Error('가산할 main/support/converted 값 중 하나는 0보다 커야 합니다.');
     err.statusCode = 400;
@@ -319,7 +320,6 @@ async function saveManualCredit({ userIdx, manualCreditId, body }) {
     isActive: body.is_active !== false && body.is_active !== 0,
   });
 }
-
 
 function average(values) {
   if (!values || !values.length) return 0;
@@ -345,17 +345,10 @@ function getMonthRange(ym) {
 }
 
 async function syncCapabilityScore({ userIdx, body }) {
-  const equipmentGroupCode = String(body.equipment_group || body.equipmentGroupCode || '').trim();
-  if (!equipmentGroupCode) {
-    const err = new Error('equipment_group 값이 필요합니다.');
-    err.statusCode = 400;
-    throw err;
-  }
-
   const dateFrom = normalizeDate(body.date_from || body.dateFrom, '2025-01-01');
   const dateTo = normalizeDate(body.date_to || body.dateTo, new Date().toISOString().slice(0, 10));
+
   const common = {
-    equipment_group: equipmentGroupCode,
     group: body.group || '',
     site: body.site || '',
     keyword: body.keyword || '',
@@ -363,33 +356,124 @@ async function syncCapabilityScore({ userIdx, body }) {
     date_to: dateTo,
   };
 
-  const [setup, maint] = await Promise.all([
-    getMatrix({ ...common, domain: 'SETUP', source_work_type: body.source_work_type || body.sourceWorkType || 'MERGED' }),
-    getMatrix({ ...common, domain: 'MAINT', source_work_type: 'MAINT' }),
-  ]);
+  const requestedEquipmentGroup = String(
+    body.equipment_group || body.equipmentGroupCode || ''
+  ).trim();
 
-  const map = new Map();
-  for (const row of setup.engineers || []) {
-    if (!map.has(row.engineer_id)) map.set(row.engineer_id, { engineer_id: row.engineer_id, engineer_name: row.engineer_name, setup_score: 0, maint_score: 0 });
-  }
-  for (const row of maint.engineers || []) {
-    if (!map.has(row.engineer_id)) map.set(row.engineer_id, { engineer_id: row.engineer_id, engineer_name: row.engineer_name, setup_score: 0, maint_score: 0 });
-  }
-  for (const row of setup.engineer_averages || []) {
-    if (!map.has(row.engineer_id)) map.set(row.engineer_id, { engineer_id: row.engineer_id, engineer_name: '', setup_score: 0, maint_score: 0 });
-    map.get(row.engineer_id).setup_score = Number((Number(row.avg_pci || 0) / 100).toFixed(6));
-  }
-  for (const row of maint.engineer_averages || []) {
-    if (!map.has(row.engineer_id)) map.set(row.engineer_id, { engineer_id: row.engineer_id, engineer_name: '', setup_score: 0, maint_score: 0 });
-    map.get(row.engineer_id).maint_score = Number((Number(row.avg_pci || 0) / 100).toFixed(6));
+  let groups = [];
+
+  if (requestedEquipmentGroup) {
+    groups = [{ code: requestedEquipmentGroup }];
+  } else {
+    groups = await pciDao.getActiveEquipmentGroups();
   }
 
-  const rows = [...map.values()];
-  const result = await pciDao.upsertCapabilityScores({ userIdx, equipmentGroupCode, rows });
+  let totalAffected = 0;
+  const results = [];
+
+  for (const groupRow of groups) {
+    const equipmentGroupCode = groupRow.code || groupRow.equipment_group_code || groupRow.eq_code || groupRow.eq_name;
+
+    if (!equipmentGroupCode) continue;
+
+    const [setup, maint] = await Promise.all([
+      getMatrix({
+        ...common,
+        equipment_group: equipmentGroupCode,
+        domain: 'SETUP',
+        source_work_type: 'MERGED',
+      }),
+      getMatrix({
+        ...common,
+        equipment_group: equipmentGroupCode,
+        domain: 'MAINT',
+        source_work_type: 'MAINT',
+      }),
+    ]);
+
+    const map = new Map();
+
+    for (const row of setup.engineers || []) {
+      if (!map.has(row.engineer_id)) {
+        map.set(row.engineer_id, {
+          engineer_id: row.engineer_id,
+          engineer_name: row.engineer_name || '',
+          setup_score: 0,
+          maint_score: 0,
+        });
+      }
+    }
+
+    for (const row of maint.engineers || []) {
+      if (!map.has(row.engineer_id)) {
+        map.set(row.engineer_id, {
+          engineer_id: row.engineer_id,
+          engineer_name: row.engineer_name || '',
+          setup_score: 0,
+          maint_score: 0,
+        });
+      }
+    }
+
+    for (const row of setup.engineer_averages || []) {
+      if (!map.has(row.engineer_id)) {
+        map.set(row.engineer_id, {
+          engineer_id: row.engineer_id,
+          engineer_name: row.engineer_name || '',
+          setup_score: 0,
+          maint_score: 0,
+        });
+      }
+
+      map.get(row.engineer_id).setup_score = Number(
+        (Number(row.avg_pci || 0) / 100).toFixed(6)
+      );
+    }
+
+    for (const row of maint.engineer_averages || []) {
+      if (!map.has(row.engineer_id)) {
+        map.set(row.engineer_id, {
+          engineer_id: row.engineer_id,
+          engineer_name: row.engineer_name || '',
+          setup_score: 0,
+          maint_score: 0,
+        });
+      }
+
+      map.get(row.engineer_id).maint_score = Number(
+        (Number(row.avg_pci || 0) / 100).toFixed(6)
+      );
+    }
+
+    const rows = [...map.values()];
+
+    const result = await pciDao.upsertCapabilityScores({
+      userIdx,
+      equipmentGroupCode,
+      rows,
+    });
+
+    totalAffected += Number(result.affected_rows || 0);
+
+    results.push({
+      equipment_group: equipmentGroupCode,
+      eq_id: result.eq_id,
+      eq_code: result.eq_code,
+      eq_name: result.eq_name,
+      affected_rows: result.affected_rows || 0,
+      rows,
+    });
+  }
+
   return {
-    ...result,
-    filters: { ...common, source_work_type: body.source_work_type || body.sourceWorkType || 'MERGED' },
-    rows,
+    ok: true,
+    affected_rows: totalAffected,
+    filters: {
+      ...common,
+      equipment_group: requestedEquipmentGroup || 'ALL',
+      source_work_type: 'MERGED',
+    },
+    results,
   };
 }
 
@@ -419,6 +503,7 @@ async function syncMonthlyCapability({ userIdx, body }) {
       bucket.get(cell.engineer_id).setup.push(v);
       bucket.get(cell.engineer_id).total.push(v);
     }
+
     for (const cell of maint.cells || []) {
       if (!bucket.has(cell.engineer_id)) bucket.set(cell.engineer_id, { engineer_id: cell.engineer_id, setup: [], maint: [], total: [] });
       const v = Number(cell.pci_score || 0) / 100;
@@ -435,6 +520,7 @@ async function syncMonthlyCapability({ userIdx, body }) {
   }));
 
   const result = await pciDao.upsertMonthlyCapability({ userIdx, ym, rows });
+
   return {
     ...result,
     ym,
@@ -451,6 +537,7 @@ async function deleteManualCredit({ userIdx, manualCreditId }) {
     err.statusCode = 400;
     throw err;
   }
+
   return await pciDao.deleteManualCredit({ userIdx, manualCreditId: id });
 }
 
