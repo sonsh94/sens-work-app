@@ -942,6 +942,21 @@ async function upsertCapabilityScores({ userIdx, equipmentGroupCode, rows }) {
   }
 }
 
+async function getCapabilityEquipmentRows() {
+  const conn = await pool.getConnection();
+
+  try {
+    const [rows] = await conn.query(`
+      SELECT
+        cs.engineer_id,
+        cs.eq_id,
+        em.eq_code,
+        em.eq_name
+      FROM capability_score cs
+      JOIN eq_master em
+        ON em.id = cs.eq_id
+    `);
+
 async function upsertMonthlyCapability({ userIdx, ym, rows }) {
   const conn = await pool.getConnection();
   try {
@@ -1016,24 +1031,10 @@ module.exports = {
   saveManualCredit,
   deleteManualCredit,
   upsertCapabilityScores,
+  getCapabilityEquipmentRows,
   upsertMonthlyCapability,
   getActiveEquipmentGroups,
-  getCapabilityEquipmentRows,
 
-  async function getCapabilityEquipmentRows() {
-  const conn = await pool.getConnection();
-
-  try {
-    const [rows] = await conn.query(`
-      SELECT
-        cs.engineer_id,
-        cs.eq_id,
-        em.eq_code,
-        em.eq_name
-      FROM capability_score cs
-      JOIN eq_master em
-        ON em.id = cs.eq_id
-    `);
 
     return rows || [];
   } finally {
