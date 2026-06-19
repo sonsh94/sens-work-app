@@ -344,6 +344,7 @@ function getMonthRange(ym) {
     `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
   return {
+    // 월별 CAPA 그래프는 월별 작업량이 아니라 누적 CAPA 추이를 보여줘야 함
     dateFrom: '2024-01-01',
     dateTo: fmt(end),
   };
@@ -487,6 +488,7 @@ const [setup, maint] = await Promise.all([
 async function syncMonthlyCapability({ userIdx, body }) {
   const ym = normalizeMonth(body.ym);
   const { dateFrom, dateTo } = getMonthRange(ym);
+
   const common = {
     group: body.group || '',
     site: body.site || '',
@@ -495,27 +497,101 @@ async function syncMonthlyCapability({ userIdx, body }) {
     date_to: dateTo,
   };
 
+  const setupSourceWorkType = String(
+    body.source_work_type || body.sourceWorkType || 'MERGED'
+  ).trim().toUpperCase();
+
   const groups = await pciDao.getActiveEquipmentGroups();
+
   const bucket = new Map();
 
+  function ensureEngineer(engineerId) {
+    if (!bucket.has(engineerId)) {
+      bucket.set(engineerId, {
+        engineer_id: engineerId,
+        setup: [],
+        maint: [],
+        total: [],
+      });
+    }
+    return bucket.get(engineerId);
+  }
+
+  function pushPositive(arr, value) {
+    const n = Number(value || 0);
+    if (Number.isFinite(n) && n > 0) arr.push(n);
+  }
+
   for (const groupRow of groups) {
+    const equipmentGroupCode =
+      groupRow.code ||
+      groupRow.equipment_group_code ||
+      groupRow.eq_code ||
+      groupRow.eq_name;
+
+    if (!equipmentGroupCode) continue;
+
     const [setup, maint] = await Promise.all([
-      getMatrix({ ...common, equipment_group: groupRow.code, domain: 'SETUP', source_work_type: 'MERGED' }),
-      getMatrix({ ...common, equipment_group: groupRow.code, domain: 'MAINT', source_work_type: 'MAINT' }),
+      getMatrix({
+        ...common,
+        equipment_group: equipmentGroupCode,
+        domain: 'SETUP',
+        source_work_type: setupSourceWorkType,
+      }),
+      getMatrix({
+        ...common,
+        equipment_group: equipmentGroupCode,
+        domain: 'MAINT',
+        source_work_type: 'MAINT',
+      }),
     ]);
 
-    for (const cell of setup.cells || []) {
-      if (!bucket.has(cell.engineer_id)) bucket.set(cell.engineer_id, { engineer_id: cell.engineer_id, setup: [], maint: [], total: [] });
-      const v = Number(cell.pci_score || 0) / 100;
-      bucket.get(cell.engineer_id).setup.push(v);
-      bucket.get(cell.engineer_id).total.push(v);
+    const setupMap = new Map();
+    const maintMap = new Map();
+
+    // 중요: cells 평균 금지
+    // cells는 항목별 0점이 많이 포함돼서 0.06 같은 낮은 값이 들어감
+    // monthly_capability는 engineer_averages 기준으로 저장해야 함
+    for (const row of setup.engineer_averages || []) {
+      const engineerId = Number(row.engineer_id);
+      const score = Number(row.avg_pci || 0) / 100;
+
+      if (!engineerId || !Number.isFinite(score) || score <= 0) continue;
+
+      setupMap.set(engineerId, score);
+      pushPositive(ensureEngineer(engineerId).setup, score);
     }
 
-    for (const cell of maint.cells || []) {
-      if (!bucket.has(cell.engineer_id)) bucket.set(cell.engineer_id, { engineer_id: cell.engineer_id, setup: [], maint: [], total: [] });
-      const v = Number(cell.pci_score || 0) / 100;
-      bucket.get(cell.engineer_id).maint.push(v);
-      bucket.get(cell.engineer_id).total.push(v);
+    for (const row of maint.engineer_averages || []) {
+      const engineerId = Number(row.engineer_id);
+      const score = Number(row.avg_pci || 0) / 100;
+
+      if (!engineerId || !Number.isFinite(score) || score <= 0) continue;
+
+      maintMap.set(engineerId, score);
+      pushPositive(ensureEngineer(engineerId).maint, score);
+    }
+
+    const engineerIds = new Set([
+      ...setupMap.keys(),
+      ...maintMap.keys(),
+    ]);
+
+    for (const engineerId of engineerIds) {
+      const s = setupMap.get(engineerId);
+      const m = maintMap.get(engineerId);
+
+      let total = null;
+
+      if (s != null && m != null) {
+        total = (s + m) / 2;
+      } else {
+        total = s ?? m ?? null;
+      }
+
+      if (total != null && Number.isFinite(total) && total > 0) {
+        pushPositive(ensureEngineer(engineerId).total, total);
+      }
     }
   }
 
@@ -533,10 +609,10 @@ async function syncMonthlyCapability({ userIdx, body }) {
     ym,
     date_from: dateFrom,
     date_to: dateTo,
+    source_work_type: setupSourceWorkType,
     rows,
   };
 }
-
 async function deleteManualCredit({ userIdx, manualCreditId }) {
   const id = Number(manualCreditId);
   if (!id) {
