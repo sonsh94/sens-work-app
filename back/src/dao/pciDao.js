@@ -257,7 +257,7 @@ async function getMatrix({
       LEFT JOIN self_agg sa
         ON sa.engineer_id = fe.id
        AND sa.pci_item_id = fi.id
-      ORDER BY fi.category, fi.sort_order, fi.item_name, fe.name
+      ORDER BY CASE WHEN fi.equipment_group_code = 'INTEGER' AND fi.pci_domain = 'MAINT' THEN fi.sort_order ELSE 0 END, fi.category, fi.sort_order, fi.item_name, fe.name
       `,
       [
         engineerGroup, engineerGroup,
@@ -559,7 +559,7 @@ async function getEngineerDetail({ engineerId, equipmentGroupCode, pciDomain, da
     const [rows] = await conn.query(
       `
       WITH filtered_items AS (
-        SELECT id, item_code, item_name, item_name_kr, category, required_count, self_weight, history_max_score, main_weight, support_weight, sort_order, pci_domain
+        SELECT id, equipment_group_code, item_code, item_name, item_name_kr, category, required_count, self_weight, history_max_score, main_weight, support_weight, sort_order, pci_domain
         FROM pci_item
         WHERE is_active = 1
           AND equipment_group_code = ?
@@ -674,7 +674,7 @@ async function getEngineerDetail({ engineerId, equipmentGroupCode, pciDomain, da
       LEFT JOIN history_agg ha ON ha.pci_item_id = fi.id
       LEFT JOIN manual_agg ma ON ma.pci_item_id = fi.id
       LEFT JOIN self_agg sa ON sa.pci_item_id = fi.id AND sa.engineer_id = ?
-      ORDER BY fi.category, fi.sort_order, fi.item_name
+      ORDER BY CASE WHEN fi.equipment_group_code = 'INTEGER' AND fi.pci_domain = 'MAINT' THEN fi.sort_order ELSE 0 END, fi.category, fi.sort_order, fi.item_name
       `,
       [
         equipmentGroupCode, pciDomain,
@@ -749,7 +749,7 @@ async function getAdminItems({ userIdx, equipmentGroupCode = '', pciDomain = '',
         AND (? = '' OR pi.pci_domain = ?)
         AND (? = '' OR pi.item_name LIKE ? OR pi.item_name_kr LIKE ? OR pi.item_code LIKE ?)
       GROUP BY pi.id
-      ORDER BY pi.equipment_group_code, pi.pci_domain, pi.category, pi.sort_order, pi.item_name
+      ORDER BY pi.equipment_group_code, pi.pci_domain, CASE WHEN pi.equipment_group_code = 'INTEGER' AND pi.pci_domain = 'MAINT' THEN pi.sort_order ELSE 0 END, pi.category, pi.sort_order, pi.item_name
       `,
       [equipmentGroupCode, equipmentGroupCode, pciDomain, pciDomain, keyword, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`]
     );
