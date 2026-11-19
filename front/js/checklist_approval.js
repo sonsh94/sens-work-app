@@ -379,11 +379,13 @@
 
   function renderAccessModal(data) {
     const engineer = data?.engineer || {};
+    const fixedEquipment = data?.policy === 'REGISTERED_EQUIPMENT';
+    [els.accessEquipmentSelect, els.accessTypeSelect, els.accessReasonInput, els.saveAccessBtn].forEach((el) => { el.disabled = fixedEquipment; });
     const finalAccess = Array.isArray(data?.final_access) ? data.final_access : [];
     const defaultAccess = new Map((Array.isArray(data?.default_access) ? data.default_access : []).map((row) => [row.code, !!row.allowed]));
     const overrideMap = new Map((Array.isArray(data?.overrides) ? data.overrides : []).map((row) => [row.equipment_group_code, row]));
 
-    els.accessModalMeta.textContent = `${engineer.name || '-'} · ${engineer.group || '-'} / ${engineer.site || '-'} · 필요 시 그룹 기준 외 설비도 허용할 수 있습니다.`;
+    els.accessModalMeta.textContent = `${engineer.name || '-'} · ${engineer.group || '-'} / ${engineer.site || '-'} · ${fixedEquipment ? '본인의 메인/멀티설비만 사용할 수 있습니다.' : '등록된 설비 권한을 확인하세요.'}`;
     els.accessEquipmentSelect.innerHTML = finalAccess.map((row) => `<option value="${escapeAttr(row.code)}">${escapeHtml(row.display_name || row.code)}</option>`).join('');
     els.accessTypeSelect.value = 'ALLOW';
     els.accessReasonInput.value = '';
@@ -410,8 +412,8 @@
               <span class="access-badge ${baseAllowed ? 'is-allow' : 'is-deny'}">기본 ${baseAllowed ? '허용' : '차단'}</span>
               <span class="access-badge ${finalAllowed ? 'is-allow' : 'is-deny'}">최종 ${finalAllowed ? '허용' : '차단'}</span>
             </div>
-            <p>${escapeHtml(override?.reason || '등록된 예외 사유 없음')}</p>
-            <div class="access-card__actions">
+            <p>${escapeHtml(fixedEquipment ? (finalAllowed ? '본인 메인/멀티 등록 설비' : '본인 메인/멀티 외 설비') : (override?.reason || '등록된 예외 사유 없음'))}</p>
+            <div class="access-card__actions" style="${fixedEquipment ? 'display:none' : ''}">
               <button type="button" class="btn btn-line access-pick-btn" data-eq="${escapeAttr(row.code)}" data-type="${escapeAttr(override?.access_type || (finalAllowed ? 'ALLOW' : 'DENY'))}" data-reason="${escapeAttr(override?.reason || '')}">이 설비 편집</button>
               ${override ? `<button type="button" class="btn btn-line access-remove-btn" data-eq="${escapeAttr(row.code)}">예외 삭제</button>` : ''}
             </div>
@@ -423,7 +425,7 @@
     const overrides = Array.isArray(data?.overrides) ? data.overrides : [];
     if (!overrides.length) {
       els.accessOverrideList.className = 'override-list empty-box';
-      els.accessOverrideList.textContent = '등록된 예외가 없습니다.';
+      els.accessOverrideList.textContent = fixedEquipment ? '메인/멀티설비 등록값에 고정됩니다. 기존 그룹 권한과 예외는 적용하지 않습니다.' : '등록된 예외가 없습니다.';
       return;
     }
 
