@@ -62,14 +62,23 @@ async function resolveEngineer(conn, userIdx) {
   return { user, resolved_by: 'user_only' };
 }
 
-async function getAccessMap(conn, engineerId, engineerGroup) {
-  const [groupRows] = await conn.query(
-    `SELECT equipment_group_code, is_allowed
-       FROM checklist_group_equipment_access
-      WHERE engineer_group = ?`,
-    [engineerGroup || '']
-  );
+// Checklist access follows the engineer's registered equipment, never the group.
+function equipmentKey(value) {
+  return String(value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
 
+function checklistEquipmentCode(eq) {
+  const aliases = {
+    SUPRAN: 'SUPRA_N', SUPRANM: 'SUPRA_N', TERA: 'SUPRA_N',
+    SUPRAXP: 'SUPRA_XP',
+    INTEGER: 'INTEGER', INTEGERPLUS: 'INTEGER', INTEGERIVR: 'INTEGER',
+    PRECIA: 'PRECIA', ECOLITE: 'ECOLITE', ECOLITE300: 'ECOLITE',
+    GENEVA: 'GENEVA', HDW: 'HDW',
+  };
+  return aliases[equipmentKey(eq.eq_code)] || aliases[equipmentKey(eq.eq_name)] || null;
+}
+
+async function getAccessMap(conn, engineerId) {
   const [equipmentRows] = await conn.query(
     `SELECT code, display_name, sort_order, is_active
        FROM checklist_equipment_group
@@ -77,30 +86,34 @@ async function getAccessMap(conn, engineerId, engineerGroup) {
       ORDER BY sort_order, code`
   );
 
-  const allowed = new Map();
-  for (const row of equipmentRows) allowed.set(row.code, false);
-  for (const row of groupRows) {
-    allowed.set(row.equipment_group_code, !!row.is_allowed);
-  }
-
+  const registeredCodes = new Set();
   if (engineerId) {
-    const [overrideRows] = await conn.query(
-      `SELECT equipment_group_code, access_type
-         FROM checklist_engineer_access_override
-        WHERE engineer_id = ?`,
+    const [registeredRows] = await conn.query(
+      `SELECT em.eq_code, em.eq_name,
+              CASE WHEN em.id = e.main_eq_id THEN 0 ELSE 1 END AS equipment_order
+         FROM engineer e
+         JOIN eq_master em ON em.id = e.main_eq_id OR em.id = e.multi_eq_id
+        WHERE e.id = ?
+        ORDER BY equipment_order, em.id`,
       [engineerId]
     );
-    for (const row of overrideRows) {
-      allowed.set(row.equipment_group_code, row.access_type === 'ALLOW');
+    for (const row of registeredRows) {
+      const code = checklistEquipmentCode(row);
+      if (code) registeredCodes.add(code);
     }
   }
 
+  const equipmentOrder = new Map([...registeredCodes].map((code, index) => [code, index]));
   return equipmentRows.map((row) => ({
     code: row.code,
     display_name: row.display_name,
     sort_order: row.sort_order,
-    allowed: !!allowed.get(row.code),
-  }));
+    allowed: registeredCodes.has(row.code),
+    access_source: 'REGISTERED_EQUIPMENT',
+  })).sort((a, b) =>
+    (equipmentOrder.get(a.code) ?? 99) - (equipmentOrder.get(b.code) ?? 99)
+    || a.sort_order - b.sort_order
+  );
 }
 
 async function findActiveTemplate(conn, equipmentGroupCode, checklistKind) {
@@ -176,7 +189,7 @@ async function ensureTemplateAccess(conn, userIdx, equipmentGroupCode) {
     throw err;
   }
 
-  const accessRows = await getAccessMap(conn, engineer.id || null, engineer.group || engineer.user?.group || '');
+  const accessRows = await getAccessMap(conn, engineer.id || null);
   const access = accessRows.find((row) => row.code === sanitizeCode(equipmentGroupCode));
   if (!access?.allowed) {
     const err = new Error('해당 설비 체크리스트 접근 권한이 없습니다.');
@@ -488,7 +501,7 @@ exports.getCurrentUserProfile = async (userIdx) => {
     const engineer = await resolveEngineer(conn, userIdx);
     if (!engineer?.user) return null;
 
-    const access = await getAccessMap(conn, engineer.id || null, engineer.group || engineer.user.group || '');
+    const access = await getAccessMap(conn, engineer.id || null);
     return {
       user: engineer.user,
       engineer: engineer.id ? {
@@ -520,7 +533,7 @@ exports.getAvailableTemplatesForUser = async (userIdx) => {
       throw err;
     }
 
-    const access = await getAccessMap(conn, engineer.id || null, engineer.group || engineer.user.group || '');
+    const access = await getAccessMap(conn, engineer.id || null);
     const allowedCodes = access.filter((row) => row.allowed).map((row) => row.code);
     if (!allowedCodes.length) return { engineer, rows: [], access };
 
@@ -558,6 +571,8 @@ exports.getAvailableTemplatesForUser = async (userIdx) => {
       [engineer.id || 0, allowedCodes]
     );
 
+    const equipmentOrder = new Map(allowedCodes.map((code, index) => [code, index]));
+    templateRows.sort((a, b) => equipmentOrder.get(a.equipment_group_code) - equipmentOrder.get(b.equipment_group_code));
     return { engineer, rows: templateRows, access };
   } finally {
     conn.release();
@@ -749,7 +764,7 @@ exports.getEngineerAccess = async (engineerId) => {
   const conn = await pool.getConnection(async c => c);
   try {
     const [engineerRows] = await conn.query(
-      `SELECT id, legacy_id, name, company, \`group\`, site, role
+      `SELECT id, legacy_id, name, company, \`group\`, site, role, main_eq_id, multi_eq_id
          FROM engineer
         WHERE id = ?
         LIMIT 1`,
@@ -762,7 +777,7 @@ exports.getEngineerAccess = async (engineerId) => {
       throw err;
     }
 
-    const defaultAccess = await getAccessMap(conn, null, engineer.group || '');
+    const defaultAccess = await getAccessMap(conn, engineerId);
 
     const [overrideRows] = await conn.query(
       `SELECT id, engineer_id, equipment_group_code, access_type, reason, created_by, created_at, updated_at
@@ -772,46 +787,24 @@ exports.getEngineerAccess = async (engineerId) => {
       [engineerId]
     );
 
-    const finalAccess = await getAccessMap(conn, engineerId, engineer.group || '');
-    return { engineer, default_access: defaultAccess, overrides: overrideRows, final_access: finalAccess };
+    const finalAccess = defaultAccess;
+    return {
+      engineer,
+      policy: 'REGISTERED_EQUIPMENT',
+      default_access: defaultAccess,
+      overrides: [],
+      legacy_overrides: overrideRows,
+      final_access: finalAccess,
+    };
   } finally {
     conn.release();
   }
 };
 
-exports.upsertEngineerAccessOverride = async ({ engineerId, equipmentGroupCode, accessType, reason, createdBy }) => {
-  const conn = await pool.getConnection(async c => c);
-  try {
-    const [existsEngineer] = await conn.query(`SELECT id FROM engineer WHERE id = ? LIMIT 1`, [engineerId]);
-    if (!existsEngineer[0]) {
-      const err = new Error('engineer not found');
-      err.statusCode = 404;
-      throw err;
-    }
-
-    const [existsEq] = await conn.query(`SELECT code FROM checklist_equipment_group WHERE code = ? LIMIT 1`, [equipmentGroupCode]);
-    if (!existsEq[0]) {
-      const err = new Error('equipment_group_code not found');
-      err.statusCode = 404;
-      throw err;
-    }
-
-    await conn.query(
-      `INSERT INTO checklist_engineer_access_override (
-         engineer_id, equipment_group_code, access_type, reason, created_by
-       ) VALUES (?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         access_type = VALUES(access_type),
-         reason = VALUES(reason),
-         created_by = VALUES(created_by),
-         updated_at = CURRENT_TIMESTAMP`,
-      [engineerId, equipmentGroupCode, accessType, reason || null, createdBy || null]
-    );
-
-    return await exports.getEngineerAccess(engineerId);
-  } finally {
-    conn.release();
-  }
+exports.upsertEngineerAccessOverride = async () => {
+  const err = new Error('체크리스트 설비는 본인의 메인/멀티설비로 고정됩니다. 설비 등록 정보를 수정해 주세요.');
+  err.statusCode = 409;
+  throw err;
 };
 
 exports.deleteEngineerAccessOverride = async ({ engineerId, equipmentGroupCode }) => {
