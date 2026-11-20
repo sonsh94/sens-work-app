@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://13.125.122.202:3001";
+const API_BASE_URL = window.location.origin;
 
 function parseJwt(token) {
   const base64Url = token.split(".")[1];
@@ -55,24 +55,10 @@ async function signIn(event) {
     localStorage.setItem("user-role", decodedToken.role);
     localStorage.setItem("user-nickname", decodedToken.nickname);
 
-    if (mustChangePassword) {
-      alert("보안을 위해 최초 로그인 시 비밀번호를 변경해야 합니다.");
-      window.location.replace("./change_password.html");
-      return;
-    }
-
-    if (passwordChangeRecommended) {
-      const goChange = confirm(
-        "마지막 비밀번호 변경일로부터 3개월이 지났습니다.\n지금 비밀번호를 변경하시겠습니까?"
-      );
-      if (goChange) {
-        window.location.replace("./change_password.html");
-        return;
-      }
-    }
+    // 비밀번호 변경 강제 및 3개월 경과 안내 사용 안 함
 
     alert(signInReturn.data.message);
-    window.location.replace("./SECM_myself.html");
+    window.location.replace("./index.html");
   } catch (error) {
     if (error.response && error.response.status === 429) {
       alert(error.response.data.message);
