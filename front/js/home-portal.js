@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const primary = ['worklog_new.html', 'wl_read.html', 'work-history-search.html'];
-  const competency = ['SECM_myself.html', 'pci.html', 'top10.html', 'CHECKLIST.html'];
+  const competency = ['SECM_myself.html', 'CHECKLIST.html', 'pci.html', 'top10.html'];
   const level = ['lv-status.html', 'skill_levels.html', 'test.html'];
   const labels = {
     'worklog_new.html': ['작업이력 작성', '오늘 수행한 작업 등록'],
