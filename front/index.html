@@ -9,11 +9,16 @@
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="./css/index.css" />
+  <link rel="stylesheet" href="./css/index.css?v=20261104-signup-count" />
 
   <!-- Scripts -->
-  <script defer src="./js/index.js"></script>
+  <script defer src="./js/index.js?v=20261104-signup-count"></script>
   <script defer src="./js/logoutTimer.js"></script>
+  <script defer src="./js/lv-status-menu.js?v=20261028"></script>
+  <script defer src="./js/weekend-duty-menu.js?v=20261104"></script>
+  <script defer src="./js/kpi-menu.js?v=1"></script>
+  <link rel="stylesheet" href="./css/home-portal.css?v=20261120-portal" />
+  <script defer src="./js/home-portal.js?v=20261120-portal"></script>
 </head>
 <body>
   <!-- Masthead -->
@@ -48,15 +53,10 @@
 
         <div class="grid">
           <!-- 01 -->
-          <a class="tile app" href="./SECM_myself.html">
+          
+<a class="tile app" href="./SECM_myself.html">
             <i class="fa-solid fa-user-gear"></i>
             <span>SECM</span>
-          </a>
-
-          <!-- 02 -->
-          <a class="tile app" href="./aiservice.html">
-            <i class="fa-solid fa-pen-to-square"></i>
-            <span>AI</span>
           </a>
 
           <!-- 02 -->
@@ -65,26 +65,28 @@
             <span>Create Worklog</span>
           </a>
 
-          <a class="tile app" href="./wl_approval.html">
-            <i class="fa-solid fa-circle-exclamation"></i>
-            <span>Worklog Approval</span>
-          </a>
-
           <!-- 03 -->
           <a class="tile app" href="./wl_read.html">
             <i class="fa-solid fa-folder-open"></i>
             <span>Load Worklog</span>
           </a>
 
-          <a class="tile app admin-only" href="./paid-report.html">
-            <i class="fa-solid fa-chart-pie"></i>
-            <span>EMS</span>
+          <a class="tile app" href="./work-history-search.html">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>Work History Search</span>
           </a>
 
-          <!-- 04 -->
-          <a class="tile app" href="./equipment_signal.html">
-            <i class="fa-solid fa-screwdriver-wrench"></i>
-            <span>Equipment</span>
+          <!-- 고객 VOC: 간단한 접수·조치 관리 -->
+          <a class="tile app" href="./voc.html" aria-label="VOC로 이동">
+            <i class="fa-solid fa-comments"></i>
+            <span>VOC</span>
+            <small>고객 의견 접수 · 조치</small>
+          </a>
+
+          <!-- S-SIGNAL: 현장 전파사항 -->
+          <a class="tile app" href="./signal.html" aria-label="S-SIGNAL로 이동">
+            <i class="fa-solid fa-bullhorn"></i>
+            <span>S-SIGNAL</span>
           </a>
 
           <!-- 05 -->
@@ -99,6 +101,17 @@
             <span>PCI</span>
           </a>
 
+          <!-- TOP10 -->
+          <a class="tile app" href="./top10.html">
+            <i class="fa-solid fa-ranking-star"></i>
+            <span>TOP10</span>
+          </a>
+
+          <a class="tile app" href="./myworks-execution.html">
+            <i class="fa-solid fa-calendar-check"></i>
+            <span>MyWorks Daily Completion Rate</span>
+          </a>
+
           <!-- 07 -->
           <a class="tile app" href="./CHECKLIST.html">
             <i class="fa-solid fa-list-check"></i>
@@ -111,7 +124,27 @@
             <span>Business Trip</span>
           </a>
 
+          <!-- Work Assignment BETA: 손석현 계정만 표시 -->
+          <a
+            class="tile app beta-owner-only"
+            href="./work-assignment-beta.html"
+            style="display:none"
+          >
+            <i class="fa-solid fa-people-group"></i>
+            <span>일일 인원 배정 BETA</span>
+          </a>
+
+
           <!-- 09 (Admin) -->
+          <a class="tile app admin-only" href="./work-item-edit-admin.html">
+            <i class="fas fa-user-shield"></i>
+            <span>기간 수정 이력 관리</span>
+          </a>
+          <a class="tile app admin-only" href="./site-work-count.html">
+            <i class="fa-solid fa-chart-column"></i>
+            <span>사이트 작업건수</span>
+            <small>MAINT · 기간별 조회</small>
+          </a>
           <a class="tile app admin-only" href="./workload.html">
             <i class="fa-solid fa-chart-pie"></i>
             <span>WTM</span>
@@ -123,7 +156,25 @@
             <span>Predicted Workers</span>
           </a>
 
+
+          <!-- External Work Management (Admin) -->
+          <a
+            class="tile app admin-only"
+            href="./external-work.html"
+          >
+            <i class="fa-solid fa-people-carry-box"></i>
+            <span>외주작업이력</span>
+          </a>
           <!-- 11 -->
+          <a class="tile app admin-only" id="account-management-tile" href="./admin_user_create.html" aria-label="Account Management">
+            <i class="fa-solid fa-users-gear"></i>
+            <span>Account Management</span>
+            <span class="signup-pending-badge" id="signup-pending-badge" aria-hidden="true" hidden></span>
+          </a>
+
+          <a class="tile app" id="weekend-duty-tile" href="./weekend-duty.html" style="display:none"><i class="fa-solid fa-calendar-days"></i><span>주말근무</span><small>PEE1G · PT</small></a>
+          <a class="tile app" id="kpi-preview-tile" href="./kpi.html" style="display:none"><i class="fa-solid fa-chart-pie"></i><span>KPI</span><small>개인 평가</small></a>
+          <a class="tile app" id="lv-status-tile" href="./lv-status.html" style="display:none"><i class="fa-solid fa-users-viewfinder"></i><span>레벨</span><small>Level 관리</small></a>
           <a class="tile app" href="./skill_levels.html">
             <i class="fa-solid fa-clipboard-check"></i>
             <span>LEVEL Certification</span>
@@ -135,15 +186,27 @@
             <span>Eng'r Level Test</span>
           </a>
 
-          <!-- 12 -->
-          <a class="tile app" href="./update.html">
-            <i class="fa-solid fa-circle-exclamation"></i>
-            <span>Update</span>
-          </a>
         </div>
       </div>
     </section>
   </main>
+
+  <div class="voc-notice hidden" id="voc-new-notice" role="dialog" aria-modal="true" aria-labelledby="voc-notice-title">
+    <button class="voc-notice__backdrop" type="button" data-voc-notice-close aria-label="알림 닫기"></button>
+    <section class="voc-notice__card">
+      <div class="voc-notice__icon"><i class="fa-solid fa-bell"></i><span id="voc-notice-count">0</span></div>
+      <div class="voc-notice__body">
+        <span class="voc-notice__site" id="voc-notice-site">담당 사이트</span>
+        <h2 id="voc-notice-title">새로운 전파사항이 있습니다.</h2>
+        <p>담당 사이트에 최근 3일 이내 등록된 내용입니다. 확인해 주세요.</p>
+        <ul class="voc-notice__list" id="voc-notice-list"></ul>
+      </div>
+      <div class="voc-notice__actions">
+        <button class="btn ghost" type="button" data-voc-notice-close>나중에</button>
+        <a class="btn voc-notice__confirm" id="voc-notice-confirm" href="./signal.html"><i class="fa-solid fa-arrow-right"></i> 신규 전파사항 확인</a>
+      </div>
+    </section>
+  </div>
 
   <footer class="sitefoot">
     <div class="inner">
