@@ -38,7 +38,7 @@ body.home-portal [hidden] { display:none !important; }
 .home-portal #home-portal .portal-link-title { font-size:19px; font-weight:750; line-height:1.45; letter-spacing:-.6px; overflow-wrap:anywhere; }
 .home-portal #home-portal .tile small { font-size:12px; line-height:1.7; color:var(--portal-muted); margin-top:7px; letter-spacing:0; font-weight:400; }
 .home-portal #home-portal .portal-link-arrow { position:absolute; right:22px; bottom:16px; font-size:24px; color:#7f8a99; font-weight:400; }
-.home-portal #home-portal .portal-analysis-grid .tile { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; min-height:88px; padding:18px 35px 18px 20px; text-align:left; gap:0; }
+.home-portal #home-portal .portal-analysis-grid .tile { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; min-height:88px; padding:18px 20px; text-align:left; gap:0; }
 .home-portal #home-portal .portal-analysis-grid .tile > i { display:none; }
 .home-portal #home-portal .portal-analysis-grid .portal-link-title { font-size:16px; }
 .home-portal #home-portal .portal-analysis-grid .tile small { margin-top:3px; font-size:11px; }
@@ -52,7 +52,7 @@ body.home-portal [hidden] { display:none !important; }
 .portal-chevron { margin-left:auto; font-size:22px; line-height:1; color:#6e7c8b; transition:transform .15s; }
 details[open] > summary .portal-chevron { transform:rotate(180deg); }
 .portal-extra-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:4px 20px 20px; }
-.home-portal #home-portal .portal-extra-grid .tile { display:flex; flex-direction:column; align-items:flex-start; min-height:90px; padding:16px 36px 16px 17px; text-align:left; gap:0; background:#fbfcfd; }
+.home-portal #home-portal .portal-extra-grid .tile { display:flex; flex-direction:column; align-items:flex-start; min-height:90px; padding:16px 17px; text-align:left; gap:0; background:#fbfcfd; }
 .home-portal #home-portal .portal-extra-grid .tile > i { display:none; }
 .home-portal #home-portal .portal-extra-grid .portal-link-title { font-size:14px; letter-spacing:-.3px; }
 .home-portal #home-portal .portal-extra-grid .portal-link-arrow { right:14px; bottom:16px; font-size:20px; }
@@ -81,6 +81,6 @@ details[open] > summary .portal-chevron { transform:rotate(180deg); }
 
 /* Four competency shortcuts on a single row. */
 #portal-competency-links { grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
-.home-portal #home-portal #portal-competency-links .tile { padding-left:14px; padding-right:28px; }
+.home-portal #home-portal #portal-competency-links .tile { padding-left:14px; padding-right:14px; }
 .home-portal #home-portal #portal-competency-links .portal-link-title { font-size:clamp(12px,1.05vw,16px); letter-spacing:-.6px; white-space:nowrap; }
 @media (max-width:650px) { #portal-competency-links { gap:6px; } .home-portal #home-portal #portal-competency-links .tile { min-height:66px; padding:12px 5px; justify-content:center; align-items:center; text-align:center; } .home-portal #home-portal #portal-competency-links .portal-link-title { font-size:clamp(9px,2.4vw,12px); letter-spacing:-.8px; } .home-portal #home-portal #portal-competency-links .tile small,.home-portal #home-portal #portal-competency-links .portal-link-arrow { display:none; } }
