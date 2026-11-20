@@ -46,15 +46,27 @@
       <aside class="portal-sidebar" aria-label="업무 메뉴">
         <nav class="portal-nav">
           <a class="is-current" href="./index.html" aria-current="page">${icons.home}<span>홈</span></a>
-          <a href="#portal-primary">${icons.work}<span>작업이력</span></a>
-          <a href="#portal-competency">${icons.skill}<span>역량</span></a>
-          <a href="#portal-level">${icons.chart}<span>LEVEL</span></a>
-          <a href="#portal-extra">${icons.other}<span>기타 업무</span></a>
+          <details class="portal-nav-group" data-nav-category="primary" hidden>
+            <summary>${icons.work}<span>작업이력</span><span class="portal-chevron">⌄</span></summary>
+            <div class="portal-submenu" data-nav-links="primary"></div>
+          </details>
+          <details class="portal-nav-group" data-nav-category="competency" hidden>
+            <summary>${icons.skill}<span>역량</span><span class="portal-chevron">⌄</span></summary>
+            <div class="portal-submenu" data-nav-links="competency"></div>
+          </details>
+          <details class="portal-nav-group" data-nav-category="level" hidden>
+            <summary>${icons.chart}<span>LEVEL</span><span class="portal-chevron">⌄</span></summary>
+            <div class="portal-submenu" data-nav-links="level"></div>
+          </details>
+          <details class="portal-nav-group" data-nav-category="extra" hidden>
+            <summary>${icons.other}<span>기타 업무</span><span class="portal-chevron">⌄</span></summary>
+            <div class="portal-submenu" data-nav-links="extra"></div>
+          </details>
+          <details class="portal-nav-group" data-nav-category="admin" hidden>
+            <summary>${icons.settings}<span>관리자 도구</span><span class="portal-chevron">⌄</span></summary>
+            <div class="portal-submenu" data-nav-links="admin"></div>
+          </details>
         </nav>
-        <details class="portal-admin" id="portal-admin" hidden>
-          <summary>${icons.settings}<span>관리자 도구</span><span class="portal-chevron">⌄</span></summary>
-          <div id="portal-admin-links" class="portal-admin-links"></div>
-        </details>
       </aside>
       <div class="portal-main">
         <header class="portal-greeting">
@@ -77,6 +89,10 @@
         <details class="portal-extra" id="portal-extra" hidden>
           <summary><strong>기타 업무</strong><span class="portal-extra-hint">출장 · 현장 지원 · 평가</span><span class="portal-chevron">⌄</span></summary>
           <div class="portal-extra-grid" id="portal-extra-links"></div>
+        </details>
+        <details class="portal-extra portal-main-admin" id="portal-admin" hidden>
+          <summary><strong>관리자 도구</strong><span class="portal-chevron">⌄</span></summary>
+          <div id="portal-admin-links" class="portal-extra-grid"></div>
         </details>
       </div>`;
     launcher.querySelector('.inner').append(portal);
@@ -130,9 +146,31 @@
       document.getElementById('portal-level').hidden = !has('level');
       document.getElementById('portal-extra').hidden = !has('extra');
       document.getElementById('portal-admin').hidden = !has('admin');
-      for (const link of portal.querySelectorAll('a[href="#portal-primary"],a[href="#portal-competency"],a[href="#portal-level"],a[href="#portal-extra"]')) {
-        const section = document.querySelector(link.getAttribute('href'));
-        link.hidden = !section || section.hidden;
+      for (const group of portal.querySelectorAll('[data-nav-category]')) {
+        const category = group.dataset.navCategory;
+        const entries = Array.from(buckets[category].children).filter(visible);
+        group.hidden = entries.length === 0;
+        const menu = group.querySelector('[data-nav-links]');
+        const definitions = entries.map(node => ({
+          href: node.getAttribute('href'),
+          title: node.querySelector('.portal-link-title')?.textContent || node.textContent.trim(),
+          badge: node.querySelector('.signup-pending-badge')?.textContent.trim() || '',
+        }));
+        const signature = JSON.stringify(definitions);
+        if (menu.dataset.signature === signature) continue;
+        menu.dataset.signature = signature;
+        menu.replaceChildren(...definitions.map(entry => {
+          const link = document.createElement('a');
+          link.href = entry.href;
+          link.textContent = entry.title;
+          if (entry.badge) {
+            const badge = document.createElement('span');
+            badge.className = 'portal-submenu-badge';
+            badge.textContent = entry.badge;
+            link.append(badge);
+          }
+          return link;
+        }));
       }
     }
     let queued = false;
@@ -144,8 +182,8 @@
     new MutationObserver(records => {
       if (records.some(record => record.type === 'childList' && record.target === source
         && Array.from(record.addedNodes).some(node => node.nodeType === 1)
-        || record.type === 'attributes' && known.has(record.target))) schedule();
-    }).observe(launcher, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+        || known.has(record.target.nodeType === 1 ? record.target.closest('a.app') : record.target.parentElement?.closest('a.app')))) schedule();
+    }).observe(launcher, { childList: true, subtree: true, attributes: true, characterData: true, attributeFilter: ['class', 'style', 'hidden'] });
     portal.querySelectorAll('a[href="#portal-extra"]').forEach(link => link.addEventListener('click', () => {
       document.getElementById('portal-extra').open = true;
     }));
