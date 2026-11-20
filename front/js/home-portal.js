@@ -1,12 +1,12 @@
 (() => {
   'use strict';
   const primary = ['worklog_new.html', 'wl_read.html', 'work-history-search.html'];
-  const competency = ['SECM_myself.html', 'pci.html', 'top10.html'];
+  const competency = ['SECM_myself.html', 'pci.html', 'top10.html', 'CHECKLIST.html'];
   const level = ['lv-status.html', 'skill_levels.html', 'test.html'];
   const labels = {
     'worklog_new.html': ['작업이력 작성', '오늘 수행한 작업 등록'],
     'wl_read.html': ['작업이력 조회', '지난 작업 내역 확인'],
-    'CHECKLIST.html': ['Self Checklist', '설비별 체크리스트 작성'],
+    'CHECKLIST.html': ['셀프체크리스트', '설비별 체크리스트 작성'],
     'SECM_myself.html': ['SECM', '개인 역량과 성장 확인'],
     'myworks-execution.html': ['MyWorks 완료율', '일일 작업 완료 현황'],
     'workload.html': ['Workload', '그룹·사이트별 업무량'],
