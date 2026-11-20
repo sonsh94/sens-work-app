@@ -84,3 +84,15 @@ details[open] > summary .portal-chevron { transform:rotate(180deg); }
 .home-portal #home-portal #portal-competency-links .tile { padding-left:14px; padding-right:14px; }
 .home-portal #home-portal #portal-competency-links .portal-link-title { font-size:clamp(12px,1.05vw,16px); letter-spacing:-.6px; white-space:nowrap; }
 @media (max-width:650px) { #portal-competency-links { gap:6px; } .home-portal #home-portal #portal-competency-links .tile { min-height:66px; padding:12px 5px; justify-content:center; align-items:center; text-align:center; } .home-portal #home-portal #portal-competency-links .portal-link-title { font-size:clamp(9px,2.4vw,12px); letter-spacing:-.8px; } .home-portal #home-portal #portal-competency-links .tile small,.home-portal #home-portal #portal-competency-links .portal-link-arrow { display:none; } }
+
+/* Expand sidebar categories without duplicating original menu IDs or permissions. */
+.portal-nav-group > summary { display:flex; align-items:center; gap:15px; padding:15px 17px; color:#465367; border-radius:9px; font-size:16px; font-weight:650; cursor:pointer; list-style:none; }
+.portal-nav-group > summary::-webkit-details-marker { display:none; }
+.portal-nav-group > summary svg { width:23px; height:23px; flex:none; }
+.portal-nav-group > summary:hover,.portal-nav-group[open] > summary { background:#eaf0f3; }
+.portal-submenu { display:grid; gap:3px; margin:4px 0 8px 27px; padding-left:12px; border-left:1px solid var(--portal-line); }
+.portal-nav .portal-submenu a { padding:9px 8px; border-radius:6px; font-size:13px; font-weight:500; gap:6px; line-height:1.5; }
+.portal-submenu-badge { margin-left:auto; padding:0 5px; min-width:18px; border-radius:12px; color:white; background:#cf4355; text-align:center; font-size:10px; }
+.portal-main-admin { margin-top:18px; }
+@media(max-width:1150px) { .portal-nav-group > summary { padding:13px; gap:10px; font-size:14px; } .portal-submenu { margin-left:22px; padding-left:8px; } }
+@media(max-width:650px) { .portal-nav { display:grid; overflow:visible; gap:5px; } .portal-nav-group > summary { padding:10px 12px; font-size:13px; } .portal-nav-group > summary svg { width:17px; height:17px; } .portal-submenu { margin-left:20px; } }
