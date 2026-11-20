@@ -1,12 +1,13 @@
 (() => {
   'use strict';
-  const primary = ['worklog_new.html', 'wl_read.html', 'CHECKLIST.html', 'SECM_myself.html'];
-  const analytics = ['myworks-execution.html', 'workload.html', 'pci.html', 'top10.html'];
+  const primary = ['worklog_new.html', 'wl_read.html', 'work-history-search.html'];
+  const competency = ['SECM_myself.html', 'pci.html', 'top10.html'];
+  const level = ['lv-status.html', 'skill_levels.html', 'test.html'];
   const labels = {
     'worklog_new.html': ['작업이력 작성', '오늘 수행한 작업 등록'],
     'wl_read.html': ['작업이력 조회', '지난 작업 내역 확인'],
     'CHECKLIST.html': ['Self Checklist', '설비별 체크리스트 작성'],
-    'SECM_myself.html': ['내 역량 (SECM)', '개인 역량과 성장 확인'],
+    'SECM_myself.html': ['SECM', '개인 역량과 성장 확인'],
     'myworks-execution.html': ['MyWorks 완료율', '일일 작업 완료 현황'],
     'workload.html': ['Workload', '그룹·사이트별 업무량'],
     'pci.html': ['PCI', '작업항목별 역량'],
@@ -14,8 +15,8 @@
     'business.html': ['출장 관리', '국내·해외 출장'],
     'setupboard.html': ['SET UP 설비', '설치 설비 현황'],
     'work-history-search.html': ['작업이력 검색', '조건별 작업 검색'],
-    'skill_levels.html': ['레벨 인증', 'LEVEL Certification'],
-    'test.html': ['레벨 평가', "Eng'r Level Test"],
+    'skill_levels.html': ['레벨인증', 'LEVEL Certification'],
+    'test.html': ['레벨평가', "Eng'r Level Test"],
     'admin_user_create.html': ['계정 관리', '가입 승인·사용자 관리'],
     'analysis.html': ['인원 운영 분석', 'Predicted Workers'],
     'work-item-edit-admin.html': ['기간 수정 이력', '작업이력 수정 관리'],
@@ -46,8 +47,8 @@
         <nav class="portal-nav">
           <a class="is-current" href="./index.html" aria-current="page">${icons.home}<span>홈</span></a>
           <a href="#portal-primary">${icons.work}<span>작업이력</span></a>
-          <a href="./SECM_myself.html">${icons.skill}<span>역량 관리</span></a>
-          <a href="#portal-analytics">${icons.chart}<span>현황·분석</span></a>
+          <a href="#portal-competency">${icons.skill}<span>역량</span></a>
+          <a href="#portal-level">${icons.chart}<span>LEVEL</span></a>
           <a href="#portal-extra">${icons.other}<span>기타 업무</span></a>
         </nav>
         <details class="portal-admin" id="portal-admin" hidden>
@@ -62,12 +63,16 @@
           <p>오늘 필요한 업무를 빠르게 시작하세요.</p>
         </header>
         <section id="portal-primary" aria-labelledby="portal-primary-title">
-          <h2 id="portal-primary-title">자주 사용하는 업무</h2>
-          <div class="portal-primary-grid" id="portal-primary-links"></div>
+          <h2 id="portal-primary-title">작업 이력</h2>
+          <div class="portal-analysis-grid portal-category-grid" id="portal-primary-links"></div>
         </section>
-        <section id="portal-analytics" aria-labelledby="portal-analytics-title" hidden>
-          <h2 id="portal-analytics-title">현황·분석</h2>
-          <div class="portal-analysis-grid" id="portal-analysis-links"></div>
+        <section id="portal-competency" aria-labelledby="portal-competency-title" hidden>
+          <h2 id="portal-competency-title">역량</h2>
+          <div class="portal-analysis-grid portal-category-grid" id="portal-competency-links"></div>
+        </section>
+        <section id="portal-level" aria-labelledby="portal-level-title" hidden>
+          <h2 id="portal-level-title">LEVEL</h2>
+          <div class="portal-analysis-grid portal-category-grid" id="portal-level-links"></div>
         </section>
         <details class="portal-extra" id="portal-extra" hidden>
           <summary><strong>기타 업무</strong><span class="portal-extra-hint">출장 · 현장 지원 · 평가</span><span class="portal-chevron">⌄</span></summary>
@@ -77,7 +82,8 @@
     launcher.querySelector('.inner').append(portal);
     const buckets = {
       primary: document.getElementById('portal-primary-links'),
-      analytics: document.getElementById('portal-analysis-links'),
+      competency: document.getElementById('portal-competency-links'),
+      level: document.getElementById('portal-level-links'),
       admin: document.getElementById('portal-admin-links'),
       extra: document.getElementById('portal-extra-links'),
     };
@@ -108,14 +114,15 @@
       for (const node of incoming) {
         const key = filename(node);
         const category = primary.includes(key) ? 'primary'
-          : analytics.includes(key) ? 'analytics'
+          : competency.includes(key) ? 'competency'
+          : level.includes(key) ? 'level'
           : node.classList.contains('admin-only') || node.classList.contains('beta-owner-only') ? 'admin' : 'extra';
         decorate(node, key);
         node.dataset.portalCategory = category;
         known.add(node);
         buckets[category].append(node);
       }
-      for (const [category, order] of [['primary', primary], ['analytics', analytics]]) {
+      for (const [category, order] of [['primary', primary], ['competency', competency], ['level', level]]) {
         for (const key of order) {
           for (const node of Array.from(buckets[category].children)) {
             if (filename(node) === key) buckets[category].append(node);
@@ -123,10 +130,12 @@
         }
       }
       const has = category => Array.from(buckets[category].children).some(visible);
-      document.getElementById('portal-analytics').hidden = !has('analytics');
+      document.getElementById('portal-primary').hidden = !has('primary');
+      document.getElementById('portal-competency').hidden = !has('competency');
+      document.getElementById('portal-level').hidden = !has('level');
       document.getElementById('portal-extra').hidden = !has('extra');
       document.getElementById('portal-admin').hidden = !has('admin');
-      for (const link of portal.querySelectorAll('a[href="#portal-analytics"],a[href="#portal-extra"]')) {
+      for (const link of portal.querySelectorAll('a[href="#portal-primary"],a[href="#portal-competency"],a[href="#portal-level"],a[href="#portal-extra"]')) {
         const section = document.querySelector(link.getAttribute('href'));
         link.hidden = !section || section.hidden;
       }
