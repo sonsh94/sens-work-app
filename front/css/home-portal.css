@@ -78,3 +78,9 @@ details[open] > summary .portal-chevron { transform:rotate(180deg); }
 /* Group the home shortcuts by task, capability, and level. */
 .portal-category-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 @media (max-width:650px) { .portal-category-grid { grid-template-columns:1fr; } }
+
+/* Four competency shortcuts on a single row. */
+#portal-competency-links { grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.home-portal #home-portal #portal-competency-links .tile { padding-left:14px; padding-right:28px; }
+.home-portal #home-portal #portal-competency-links .portal-link-title { font-size:clamp(12px,1.05vw,16px); letter-spacing:-.6px; white-space:nowrap; }
+@media (max-width:650px) { #portal-competency-links { gap:6px; } .home-portal #home-portal #portal-competency-links .tile { min-height:66px; padding:12px 5px; justify-content:center; align-items:center; text-align:center; } .home-portal #home-portal #portal-competency-links .portal-link-title { font-size:clamp(9px,2.4vw,12px); letter-spacing:-.8px; } .home-portal #home-portal #portal-competency-links .tile small,.home-portal #home-portal #portal-competency-links .portal-link-arrow { display:none; } }
