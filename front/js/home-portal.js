@@ -70,7 +70,7 @@
           <div class="portal-analysis-grid" id="portal-analysis-links"></div>
         </section>
         <details class="portal-extra" id="portal-extra" hidden>
-          <summary><strong>기타 업무</strong><span class="portal-extra-hint">출장 · 설비 · 현장 지원 · 평가</span><span class="portal-chevron">⌄</span></summary>
+          <summary><strong>기타 업무</strong><span class="portal-extra-hint">출장 · 현장 지원 · 평가</span><span class="portal-chevron">⌄</span></summary>
           <div class="portal-extra-grid" id="portal-extra-links"></div>
         </details>
       </div>`;
