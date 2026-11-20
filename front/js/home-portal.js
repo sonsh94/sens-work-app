@@ -101,11 +101,6 @@
           if (!description) { description = document.createElement('small'); node.append(description); }
           description.textContent = definition[1];
         }
-        const arrow = document.createElement('span');
-        arrow.className = 'portal-link-arrow';
-        arrow.setAttribute('aria-hidden', 'true');
-        arrow.textContent = '→';
-        node.append(arrow);
         node.dataset.portalDecorated = '1';
       }
     }
