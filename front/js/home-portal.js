@@ -27,15 +27,6 @@
   };
   const visible = node => !node.hidden && !node.classList.contains('hidden')
     && node.style.display !== 'none' && getComputedStyle(node).display !== 'none';
-  const icon = (shape) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + shape + '</svg>';
-  const icons = {
-    home: icon('<path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/>'),
-    work: icon('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>'),
-    skill: icon('<path d="m3 7 9-4 9 4-9 4zM3 12l9 4 9-4M3 17l9 4 9-4"/>'),
-    chart: icon('<path d="M4 20V11M10 20V4M16 20V8M22 20H2"/>'),
-    other: icon('<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/>'),
-    settings: icon('<circle cx="12" cy="12" r="3"/><path d="m9 3 1-1h4l1 3 3 1 3 1v4l-2 2-1 3-1 3h-4l-2-2-3-1-3-1v-4l2-2 1-3z"/>'),
-  };
   function init() {
     const launcher = document.getElementById('launcher');
     const source = launcher?.querySelector('.grid');
@@ -43,24 +34,10 @@
     const portal = document.createElement('div');
     portal.id = 'home-portal';
     portal.innerHTML = `
-      <aside class="portal-sidebar" aria-label="업무 메뉴">
-        <nav class="portal-nav">
-          <a class="is-current" href="./index.html" aria-current="page">${icons.home}<span>홈</span></a>
-          <a href="#portal-primary">${icons.work}<span>작업이력</span></a>
-          <a href="#portal-competency">${icons.skill}<span>역량</span></a>
-          <a href="#portal-level">${icons.chart}<span>LEVEL</span></a>
-          <a href="#portal-extra">${icons.other}<span>기타 업무</span></a>
-        </nav>
-        <details class="portal-admin" id="portal-admin" hidden>
-          <summary>${icons.settings}<span>관리자 도구</span><span class="portal-chevron">⌄</span></summary>
-          <div id="portal-admin-links" class="portal-admin-links"></div>
-        </details>
-      </aside>
       <div class="portal-main">
         <header class="portal-greeting">
-          <p class="portal-eyebrow">현장 업무 포털</p>
-          <h1 id="portal-greeting">오늘의 업무를 시작하세요</h1>
-          <p>오늘 필요한 업무를 빠르게 시작하세요.</p>
+          <h1 id="portal-greeting">업무 메뉴</h1>
+          <p>필요한 업무를 선택하세요.</p>
         </header>
         <section id="portal-primary" aria-labelledby="portal-primary-title">
           <h2 id="portal-primary-title">작업 이력</h2>
@@ -75,8 +52,12 @@
           <div class="portal-analysis-grid portal-category-grid" id="portal-level-links"></div>
         </section>
         <details class="portal-extra" id="portal-extra" hidden>
-          <summary><strong>기타 업무</strong><span class="portal-extra-hint">출장 · 현장 지원 · 평가</span><span class="portal-chevron">⌄</span></summary>
+          <summary><strong>기타 업무</strong><span class="portal-chevron">⌄</span></summary>
           <div class="portal-extra-grid" id="portal-extra-links"></div>
+        </details>
+        <details class="portal-admin" id="portal-admin" hidden>
+          <summary><span>관리자 도구</span><span class="portal-chevron">⌄</span></summary>
+          <div id="portal-admin-links" class="portal-admin-links"></div>
         </details>
       </div>`;
     launcher.querySelector('.inner').append(portal);
@@ -150,20 +131,13 @@
       document.getElementById('portal-extra').open = true;
     }));
     const brandTag = document.querySelector('.brand__tag');
-    if (brandTag) brandTag.textContent = '현장 업무를 한곳에서';
+    if (brandTag) brandTag.textContent = '기록에서 성장까지';
     const login = document.getElementById('login-btn'), logout = document.getElementById('logout-btn');
     if (login) login.textContent = '로그인';
     if (logout) logout.textContent = '로그아웃';
     document.body.classList.add('home-portal');
     reconcile();
-    const token = localStorage.getItem('x-access-token');
-    if (token) fetch('/user-info', { headers: { 'x-access-token': token } })
-      .then(response => response.ok ? response.json() : null)
-      .then(data => {
-        const info = data?.result || {};
-        const name = String(info.NAME || info.name || info.nickname || '').trim();
-        if (name) document.getElementById('portal-greeting').textContent = '안녕하세요, ' + name + '님';
-      }).catch(() => {});
+
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
