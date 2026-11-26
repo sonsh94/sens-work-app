@@ -356,6 +356,7 @@ exports.listEvents = async (req, res) => {
     const filters = {
       group:          req.query.group          || '',
       site:           req.query.site           || '',
+      travel_scope:   req.query.travel_scope   || '',
       equipment_name: req.query.equipment_name || '',
       work_type:      req.query.work_type      || '',
       date_from:      req.query.date_from      || '',
@@ -413,6 +414,7 @@ exports.exportExcel = async (req, res) => {
     const filters = {
       group:          req.query.group          || '',
       site:           req.query.site           || '',
+      travel_scope:   req.query.travel_scope   || '',
       equipment_name: req.query.equipment_name || '',
       work_type:      req.query.work_type      || '',
       date_from:      req.query.date_from      || '',

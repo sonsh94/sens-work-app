@@ -704,6 +704,8 @@ exports.listEvents = async (filters = {}) => {
 
     if (filters.group) { cond.push('e.`group` = ?'); vals.push(filters.group); }
     if (filters.site)  { cond.push('e.site = ?');     vals.push(filters.site); }
+    if (filters.travel_scope === 'OVERSEAS') { cond.push("NULLIF(TRIM(e.country), '') IS NOT NULL AND UPPER(TRIM(e.country)) <> 'KR'"); }
+    if (filters.travel_scope === 'DOMESTIC') { cond.push("UPPER(TRIM(e.country)) = 'KR'"); }
     if (filters.equipment_name) {
       cond.push('e.equipment_name LIKE ?'); vals.push(`%${filters.equipment_name}%`);
     }
@@ -851,6 +853,8 @@ exports.listEventsForExcel = async (filters = {}) => {
     }
     if (filters.group) { cond.push('e.`group` = ?'); vals.push(filters.group); }
     if (filters.site)  { cond.push('e.site = ?');     vals.push(filters.site); }
+    if (filters.travel_scope === 'OVERSEAS') { cond.push("NULLIF(TRIM(e.country), '') IS NOT NULL AND UPPER(TRIM(e.country)) <> 'KR'"); }
+    if (filters.travel_scope === 'DOMESTIC') { cond.push("UPPER(TRIM(e.country)) = 'KR'"); }
     if (filters.date_from) { cond.push('e.task_date >= ?'); vals.push(filters.date_from); }
     if (filters.date_to)   { cond.push('e.task_date <= ?'); vals.push(filters.date_to); }
     if (filters.equipment_name) {
