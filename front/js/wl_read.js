@@ -23,7 +23,7 @@ function initNav(){if(me){document.querySelectorAll('.sign-container.unsigned').
 
 function initDates(){const t=new Date(),f=new Date(t);f.setMonth(f.getMonth()-1);const fm=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;document.getElementById('f-date-from').value=fm(f);document.getElementById('f-date-to').value=fm(t);}
 
-function getFilters(){return{date_from:document.getElementById('f-date-from').value,date_to:document.getElementById('f-date-to').value,group:document.getElementById('f-group').value,site:document.getElementById('f-site').value,work_type:document.getElementById('f-work-type').value,rework_filter:document.getElementById('f-rework').value,equipment_name:document.getElementById('f-eq-name').value.trim(),worker_name:document.getElementById('f-worker').value.trim(),task_name:document.getElementById('f-title').value.trim()};}
+function getFilters(){return{travel_scope:document.getElementById('f-travel-scope').value,date_from:document.getElementById('f-date-from').value,date_to:document.getElementById('f-date-to').value,group:document.getElementById('f-group').value,site:document.getElementById('f-site').value,work_type:document.getElementById('f-work-type').value,rework_filter:document.getElementById('f-rework').value,equipment_name:document.getElementById('f-eq-name').value.trim(),worker_name:document.getElementById('f-worker').value.trim(),task_name:document.getElementById('f-title').value.trim()};}
 
 function applyReworkFilter(rows,reworkFilter){if(!Array.isArray(rows))return[];if(reworkFilter==='Y')return rows.filter(r=>Number(r.is_rework)===1);if(reworkFilter==='N')return rows.filter(r=>Number(r.is_rework)!==1);return rows;}
 
@@ -81,11 +81,11 @@ function renderPage(){
   const pageRows=allRows.slice(start,start+PAGE_SIZE);
   const w=document.getElementById('table-wrapper');
 
-  let tableHtml=`<div class="table-scroll"><table class="wl-table"><thead><tr><th>Date</th><th>Work Code</th><th>Title</th><th>EQ Name</th><th>Group</th><th>Site</th><th>Type</th><th>EMS</th><th>Workers</th><th>RW</th></tr></thead><tbody>`;
+  let tableHtml=`<div class="table-scroll"><table class="wl-table"><thead><tr><th>Date</th><th>Work Code</th><th>Title</th><th>EQ Name</th><th>Country</th><th>Group</th><th>Site</th><th>Type</th><th>EMS</th><th>Workers</th><th>RW</th></tr></thead><tbody>`;
   pageRows.forEach(r=>{
     const rowClass=`clickable-row${Number(r.is_rework)===1?' row-rework':''}`;
     const reworkCell=Number(r.is_rework)===1?'<span class="rework-badge">RW</span>':'<span class="rework-badge muted">-</span>';
-    tableHtml+=`<tr data-id="${r.id}" class="${rowClass}"><td>${fmtDate(r.task_date)}</td><td class="code-cell">${escHtml(r.work_code||'')}</td><td>${escHtml(r.task_name||'')}</td><td>${escHtml(r.equipment_name||'')}</td><td>${escHtml(r.group||'')}</td><td>${escHtml(r.site||'')}</td><td>${escHtml(r.work_type||'')}${r.work_type2?'/'+escHtml(r.work_type2):''}</td><td>${r.ems==1?'유상':'무상'}</td><td>${escHtml(r.workers_str||'')}</td><td>${reworkCell}</td></tr>`;
+    tableHtml+=`<tr data-id="${r.id}" class="${rowClass}"><td>${fmtDate(r.task_date)}</td><td class="code-cell">${escHtml(r.work_code||'')}</td><td>${escHtml(r.task_name||'')}</td><td>${escHtml(r.equipment_name||'')}</td><td>${escHtml(r.country||'—')}</td><td>${escHtml(r.group||'')}</td><td>${escHtml(r.site||'')}</td><td>${escHtml(r.work_type||'')}${r.work_type2?'/'+escHtml(r.work_type2):''}</td><td>${r.ems==1?'유상':'무상'}</td><td>${escHtml(r.workers_str||'')}</td><td>${reworkCell}</td></tr>`;
   });
   tableHtml+='</tbody></table></div>';
   w.innerHTML=tableHtml;
@@ -161,7 +161,7 @@ const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([hd,...rows]);ws['!col
 document.addEventListener('DOMContentLoaded',()=>{
 initNav();initDates();
 document.getElementById('btn-search')?.addEventListener('click',doSearch);
-document.getElementById('btn-reset')?.addEventListener('click',()=>{['f-date-from','f-date-to','f-eq-name','f-worker','f-title'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});['f-group','f-site','f-work-type','f-rework'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});initDates();});
+document.getElementById('btn-reset')?.addEventListener('click',()=>{['f-date-from','f-date-to','f-eq-name','f-worker','f-title'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});['f-group','f-site','f-work-type','f-rework','f-travel-scope'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});initDates();});
 document.getElementById('btn-excel')?.addEventListener('click',doExcel);
 document.getElementById('modal-close')?.addEventListener('click',closeModal);
 document.getElementById('modal-overlay')?.addEventListener('click',closeModal);
